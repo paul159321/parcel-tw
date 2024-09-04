@@ -18,12 +18,24 @@ cargo_tw 是一個用來查詢台灣包裹進度的 Python package，支援多�
 ## Usage
 
 ```python
-from cargotw import track, Platform
+from cargo_tw import track, Platform
 
 order_id = "order_id here"
 track(Platform.SevenEleven, order_id) # 查詢 7-11 包裹
 track(Platform.FamilyMart, order_id) # 查詢全家包裹
 track(Platform.OKMart, order_id) # 查詢 OK Mart 包裹
+```
+
+track 會返回一個 TrackingInfo 物件，可以取得包裹的狀態。
+
+```python
+result = track(Platform.SevenEleven, order_id)
+
+print(result.order_id) # 取貨編號
+print(result.platform) # 物流平台
+print(result.status) # 包裹狀態
+print(result.time) # 更新時間
+print(result.raw_data) # 爬蟲的詳細資料 (dict)
 ```
 
 ## Roadmap

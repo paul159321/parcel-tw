@@ -3,7 +3,7 @@ import os
 
 from dotenv import load_dotenv
 
-from cargo_tw import Platform, track
+from parcel_tw import Platform, track
 
 load_dotenv()
 OKMART_ORDER_ID = os.getenv("OKMART_ORDER_ID")

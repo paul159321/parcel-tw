@@ -1,4 +1,4 @@
-# cargo_tw
+# parecl_tw
 
 <p align="center">
     <img src="img/box.png" width=100>
@@ -7,7 +7,7 @@
 
 ## About
 
-cargo_tw 是一個用來查詢台灣包裹進度的 Python package，支援多家的物流系統(7-11、OK)。
+parcel_tw 是一個用來查詢台灣包裹進度的 Python package，支援多家的物流系統(7-11、OK)。
 
 ## Installation
 
@@ -18,7 +18,7 @@ cargo_tw 是一個用來查詢台灣包裹進度的 Python package，支援多�
 ## Usage
 
 ```python
-from cargo_tw import track, Platform
+from parcel_tw import track, Platform
 
 order_id = "order_id here"
 track(Platform.SevenEleven, order_id) # 查詢 7-11 包裹

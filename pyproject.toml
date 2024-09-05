@@ -1,3 +1,32 @@
+[build-system]
+requires = ["hatchling", "hatch-requirements-txt"]
+build-backend = "hatchling.build"
+
+[project]
+name = "parcel_tw"
+version = "0.0.1"
+authors = [
+    { name = "ryanycs" }
+]
+description = "The Python package for Taiwan parcel tracking."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dynamic = ["dependencies"]
+
+[project.urls]
+"Homepage" = "https://github.com/ryanycs/parcel_tw"
+"Issues" = "https://github.com/ryanycs/parcel_tw/issues"
+
+[tool.hatch.metadata.hooks.requirements_txt]
+files = ["requirements.txt"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 log_cli = true

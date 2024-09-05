@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -9,7 +9,7 @@ class TrackingInfo:
     status: str
     time: str | None
     is_delivered: bool
-    raw_data: dict
+    raw_data: dict = field(repr=False)
 
 
 class Tracker(ABC):

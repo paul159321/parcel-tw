@@ -19,11 +19,7 @@ class SevenElevenTracker(Tracker):
         self.session = requests.Session()
         self.max_retry = max_retry  # max retry times for captcha
 
-    def search(self, order_id: str) -> TrackingInfo | None:
-        """Tracking order status from 7-11 e-tracking website
-
-        :param order_id: 寄件8碼或取貨11碼、12碼
-        """
+    def track_status(self, order_id: str) -> TrackingInfo | None:
         if not self._validate_order_id(order_id):
             return None
 

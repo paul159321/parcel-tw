@@ -27,7 +27,7 @@ class FamilyMartTracker(Tracker):
         self.session.mount("https://", TLSAdapter())  # used to avoid SSLError
         self.tracking_info = None
 
-    def search(self, order_id) -> TrackingInfo | None:
+    def track_status(self, order_id: str) -> TrackingInfo | None:
         headers = {"Content-Type": "application/json; charset=UTF-8"}
 
         payload = {"EC_ORDER_NO": order_id, "ORDER_NO": order_id, "RCV_USER_NAME": None}

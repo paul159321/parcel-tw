@@ -16,9 +16,7 @@ class OKMartTracker(Tracker):
         self.session = requests.Session()
         self.tracking_info = None
 
-    def search(self, order_id: str) -> TrackingInfo | None:
-        """Track the package status of OKMart by order_id"""
-
+    def track_status(self, order_id: str) -> TrackingInfo | None:
         logging.info("[OKMart] Getting validate code")
         validate_code = self._get_validate_code()
 

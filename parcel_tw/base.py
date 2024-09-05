@@ -14,5 +14,19 @@ class TrackingInfo:
 
 class Tracker(ABC):
     @abstractmethod
-    def search(self, order_id: str) -> TrackingInfo | None:
+    def track_status(self, order_id: str) -> TrackingInfo | None:
+        """
+        Track the parcel status by order_id
+
+        Parameters
+        ----------
+        order_id : str
+            The order_id of the parcel
+
+        Returns
+        -------
+        TrackingInfo | None
+            A `TrackingInfo` object with the status details of the parcel,
+            or `None` if no information is available.
+        """
         pass

@@ -1,4 +1,4 @@
-# parecl_tw
+# parcel_tw
 
 <p align="center">
     <img src="img/box.png" width=100>
@@ -7,7 +7,7 @@
 
 ## About
 
-parcel_tw 是一個用來查詢台灣包裹進度的 Python package，支援多家的物流系統(7-11、OK)。
+parcel_tw 是一個查詢台灣包裹進度的 Python package，支援多家的物流系統(7-11、OK)。
 
 ## Installation
 

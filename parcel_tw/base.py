@@ -8,7 +8,7 @@ class TrackingInfo:
     platform: str
     status: str
     time: str | None
-    is_arrived: bool
+    is_delivered: bool
     raw_data: dict
 
 

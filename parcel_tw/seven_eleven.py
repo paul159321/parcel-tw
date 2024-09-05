@@ -139,14 +139,14 @@ class SevenElevenTracker(Tracker):
         else:
             return None
 
-        is_arrived = "包裹配達取件門市" in status or "已完成包裹成功取件" in status
+        is_delivered = "包裹配達取件門市" in status or "已完成包裹成功取件" in status
 
         return TrackingInfo(
             order_id=order_id,
             platform="7-11",
             status=status,
             time=time,
-            is_arrived=is_arrived,
+            is_delivered=is_delivered,
             raw_data=raw_data,
         )
 

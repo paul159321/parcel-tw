@@ -63,14 +63,14 @@ class OKMartTracker(Tracker):
         order_id = raw_data["odNo"]
         status = raw_data["status"]
         # TODO: Check the message of status is arrived
-        is_arrived = raw_data["status"] == "已送達" or raw_data["status"] == "已取貨"
+        is_delivered = raw_data["status"] == "已送達" or raw_data["status"] == "已取貨"
 
         return TrackingInfo(
             order_id=order_id,
             platform="OKMart",
             time=None,
             status=status,
-            is_arrived=is_arrived,
+            is_delivered=is_delivered,
             raw_data=raw_data,
         )
 

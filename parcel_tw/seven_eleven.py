@@ -21,67 +21,83 @@ class SevenElevenTracker(Tracker):
 
     def search(self, order_id: str) -> TrackingInfo | None:
         """Tracking order status from 7-11 e-tracking website
-        :param order_id: order id
+
+        :param order_id: 寄件8碼或取貨11碼、12碼
         """
         if not self._validate_order_id(order_id):
             return None
 
+        # Try to search the order status
         retry_counter = 0
         raw_data = None
         while retry_counter < self.max_retry:
-            logging.info("[7-11] Getting the search page")
-            response = self.session.get(self.SEARCH_URL)
-            if response.status_code != 200:
+            # Get the search page
+            response = self._get_search_page()
+            if response is None:
+                retry_counter += 1
+                logging.warning(
+                    f"[7-11] Failed to get the search page, Retry {retry_counter} times"
+                )
                 continue
 
-            soup = BeautifulSoup(response.text, "html.parser")
-
-            # Get payload value from the response used for POST request
-            view_state = self._get_payload_value(soup, "__VIEWSTATE")
-            view_state_generator = self._get_payload_value(soup, "__VIEWSTATEGENERATOR")
-            validate_image = self._get_validate_image(response.text)
-            code = self._get_validate_code(validate_image)
-
-            payload = {
-                "__EVENTTARGET": "submit",
-                "__EVENTARGUMENT": "",
-                "__VIEWSTATE": view_state,
-                "__VIEWSTATEGENERATOR": view_state_generator,
-                "txtProductNum": order_id,
-                "tbChkCode": code,
-                "txtIMGName": "",
-                "txtPage": 1,
-            }
-
-            logging.info("[7-11] Sending post request to the search page")
-            response = self.session.post(self.SEARCH_URL, data=payload)
-            if response.status_code != 200:
+            # Construct payload and send post request
+            payload = self._construct_payload(response, order_id)
+            response = self._send_post_request(payload)
+            if response is None:
+                retry_counter += 1
+                logging.warning(
+                    f"[7-11] Failed to send post request, Retry {retry_counter} times"
+                )
                 continue
 
-            logging.info("[7-11] Parsing the response")
+            # Parse the response
             parser = SevenElevenResponseParser(response.text)
             raw_data = parser.parse()
 
-            # If the captcha is wrong, retry
-            if raw_data["msg"] == "驗證碼錯誤!!":
+            # Check if there is any captcha error
+            if self._captcha_error(raw_data):
                 retry_counter += 1
                 logging.warning(f"[7-11] Captcha Error, Retry {retry_counter} times")
             else:
                 break
 
         self.tracking_info = self._convert_to_tracking_info(raw_data)
-
         return self.tracking_info
 
-    def _validate_order_id(self, order_id: str):
+    def _validate_order_id(self, order_id: str) -> bool:
         return len(order_id) == 8 or len(order_id) == 11 or len(order_id) == 12
 
-    def _get_payload_value(self, soup: BeautifulSoup, key: str):
+    def _get_search_page(self) -> requests.Response | None:
+        logging.info("[7-11] Getting the search page...")
+        response = self.session.get(self.SEARCH_URL)
+        if response.status_code != 200:
+            return None
+        return response
+
+    def _construct_payload(self, response: requests.Response, order_id: str) -> dict:
+        soup = BeautifulSoup(response.text, "html.parser")
+        view_state = self._get_payload_value(soup, "__VIEWSTATE")
+        view_state_generator = self._get_payload_value(soup, "__VIEWSTATEGENERATOR")
+        validate_image = self._get_validate_image(response.text)
+        code = self._get_validate_code(validate_image)
+        payload = {
+            "__EVENTTARGET": "submit",
+            "__EVENTARGUMENT": "",
+            "__VIEWSTATE": view_state,
+            "__VIEWSTATEGENERATOR": view_state_generator,
+            "txtProductNum": order_id,
+            "tbChkCode": code,
+            "txtIMGName": "",
+            "txtPage": 1,
+        }
+        return payload
+
+    def _get_payload_value(self, soup: BeautifulSoup, key: str) -> str | None:
         tag = soup.find("input", id=key)
         if isinstance(tag, Tag):
             return tag.get("value")
         else:
-            logging.error(f"Failed to get {key}")
+            return None
 
     def _get_validate_image(self, html) -> Image.Image:
         """Get validate image from 7-11 e-tracking website"""
@@ -91,13 +107,22 @@ class SevenElevenTracker(Tracker):
             validate_image_url = self.BASE_URL + url_suffix.group(1)
 
         response = self.session.get(validate_image_url)
-
         return Image.open(io.BytesIO(response.content))
 
     def _get_validate_code(self, image: Image.Image) -> str:
         tesseract_config = "-c tessedit_char_whitelist=0123456789 --psm 8"
         code = pytesseract.image_to_string(image, config=tesseract_config).strip()
         return code
+
+    def _send_post_request(self, payload: dict) -> requests.Response | None:
+        logging.info("[7-11] Sending post request to the search page...")
+        response = self.session.post(self.SEARCH_URL, data=payload)
+        if response.status_code != 200:
+            return None
+        return response
+
+    def _captcha_error(self, raw_data: dict) -> bool:
+        return raw_data["msg"] == "驗證碼錯誤!!"
 
     def _convert_to_tracking_info(self, raw_data: dict | None) -> TrackingInfo | None:
         if raw_data is None or raw_data["result"]["info"] is None:

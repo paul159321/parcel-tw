@@ -1,5 +1,6 @@
 from .base import Tracker, TrackingInfo
 from .enums import Platform
+from .family_mart import FamilyMartTracker
 from .okmart import OKMartTracker
 from .seven_eleven import SevenElevenTracker
 
@@ -10,6 +11,8 @@ class TrackerFactory:
         match platform:
             case Platform.SevenEleven:
                 return SevenElevenTracker()
+            case Platform.FamilyMart:
+                return FamilyMartTracker()
             case Platform.OKMart:
                 return OKMartTracker()
             case _:

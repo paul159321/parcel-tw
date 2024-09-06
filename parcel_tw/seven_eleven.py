@@ -10,115 +10,25 @@ from PIL import Image
 
 from .base import Tracker, TrackingInfo
 
+BASE_URL: Final = "https://eservice.7-11.com.tw/e-tracking/"
+SEARCH_URL: Final = BASE_URL + "search.aspx"
+
 
 class SevenElevenTracker(Tracker):
-    BASE_URL: Final = "https://eservice.7-11.com.tw/e-tracking/"
-    SEARCH_URL: Final = BASE_URL + "search.aspx"
-
-    def __init__(self, max_retry: int = 5):
-        self.session = requests.Session()
-        self.max_retry = max_retry  # max retry times for captcha
+    def __init__(self):
+        self.tracking_info = None
 
     def track_status(self, order_id: str) -> TrackingInfo | None:
         if not self._validate_order_id(order_id):
             return None
 
-        # Try to search the order status
-        retry_counter = 0
-        raw_data = None
-        while retry_counter < self.max_retry:
-            # Get the search page
-            response = self._get_search_page()
-            if response is None:
-                retry_counter += 1
-                logging.warning(
-                    f"[7-11] Failed to get the search page, Retry {retry_counter} times"
-                )
-                continue
-
-            # Construct payload and send post request
-            payload = self._construct_payload(response, order_id)
-            response = self._send_post_request(payload)
-            if response is None:
-                retry_counter += 1
-                logging.warning(
-                    f"[7-11] Failed to send post request, Retry {retry_counter} times"
-                )
-                continue
-
-            # Parse the response
-            parser = SevenElevenResponseParser(response.text)
-            raw_data = parser.parse()
-
-            # Check if there is any captcha error
-            if self._captcha_error(raw_data):
-                retry_counter += 1
-                logging.warning(f"[7-11] Captcha Error, Retry {retry_counter} times")
-            else:
-                break
-
+        raw_data = SevenElevenRequestHandler().get_result(order_id)
         self.tracking_info = self._convert_to_tracking_info(raw_data)
+
         return self.tracking_info
 
     def _validate_order_id(self, order_id: str) -> bool:
         return len(order_id) == 8 or len(order_id) == 11 or len(order_id) == 12
-
-    def _get_search_page(self) -> requests.Response | None:
-        logging.info("[7-11] Getting the search page...")
-        response = self.session.get(self.SEARCH_URL)
-        if response.status_code != 200:
-            return None
-        return response
-
-    def _construct_payload(self, response: requests.Response, order_id: str) -> dict:
-        soup = BeautifulSoup(response.text, "html.parser")
-        view_state = self._get_payload_value(soup, "__VIEWSTATE")
-        view_state_generator = self._get_payload_value(soup, "__VIEWSTATEGENERATOR")
-        validate_image = self._get_validate_image(response.text)
-        code = self._get_validate_code(validate_image)
-        payload = {
-            "__EVENTTARGET": "submit",
-            "__EVENTARGUMENT": "",
-            "__VIEWSTATE": view_state,
-            "__VIEWSTATEGENERATOR": view_state_generator,
-            "txtProductNum": order_id,
-            "tbChkCode": code,
-            "txtIMGName": "",
-            "txtPage": 1,
-        }
-        return payload
-
-    def _get_payload_value(self, soup: BeautifulSoup, key: str) -> str | None:
-        tag = soup.find("input", id=key)
-        if isinstance(tag, Tag):
-            return tag.get("value")
-        else:
-            return None
-
-    def _get_validate_image(self, html) -> Image.Image:
-        """Get validate image from 7-11 e-tracking website"""
-        validate_image_url = ""
-        url_suffix = re.search(r'src="(ValidateImage\.aspx\?ts=[0-9]+)"', html)
-        if url_suffix is not None:
-            validate_image_url = self.BASE_URL + url_suffix.group(1)
-
-        response = self.session.get(validate_image_url)
-        return Image.open(io.BytesIO(response.content))
-
-    def _get_validate_code(self, image: Image.Image) -> str:
-        tesseract_config = "-c tessedit_char_whitelist=0123456789 --psm 8"
-        code = pytesseract.image_to_string(image, config=tesseract_config).strip()
-        return code
-
-    def _send_post_request(self, payload: dict) -> requests.Response | None:
-        logging.info("[7-11] Sending post request to the search page...")
-        response = self.session.post(self.SEARCH_URL, data=payload)
-        if response.status_code != 200:
-            return None
-        return response
-
-    def _captcha_error(self, raw_data: dict) -> bool:
-        return raw_data["msg"] == "驗證碼錯誤!!"
 
     def _convert_to_tracking_info(self, raw_data: dict | None) -> TrackingInfo | None:
         if raw_data is None or raw_data["result"]["info"] is None:
@@ -147,12 +57,164 @@ class SevenElevenTracker(Tracker):
         )
 
 
+class SevenElevenRequestHandler:
+    def __init__(self, max_retry: int = 5):
+        """
+        Request handler for 7-11 e-tracking website
+
+        Parameters
+        ----------
+        max_retry : int
+            The maximum number of retries when the captcha is incorrect
+        """
+
+        self.session = requests.Session()
+        self.max_retry = max_retry
+
+    def get_result(self, order_id) -> dict | None:
+        """
+        Get the tracking information from the 7-11 e-tracking website
+
+        Parameters
+        ----------
+        order_id : str
+            The order_id of the parcel
+
+        Returns
+        -------
+        dict | None
+            The tracking information of the parcel
+        """
+
+        retry_counter = 0
+        while retry_counter < self.max_retry:
+            try:
+                response = self._post_search(order_id)
+                result = SevenElevenResponseParser(response.text).parse()
+                if result["msg"] == "驗證碼錯誤!!":
+                    retry_counter += 1
+                    logging.warning(
+                        f"[7-11] Failed to get the search page, Retry {retry_counter} times"
+                    )
+                    continue
+                return result
+            except Exception as e:
+                logging.error(f"[7-11] {e}")
+
+        return None
+
+    def _post_search(self, order_id: str) -> requests.Response:
+        """
+        Post the search request to the 7-11 e-tracking website
+
+        Parameters
+        ----------
+        order_id : str
+            The order_id of the parcel
+
+        Returns
+        -------
+        requests.Response
+            The response of the search request
+        """
+
+        response = self.session.get(SEARCH_URL)
+        if response.status_code != 200:
+            raise Exception("Failed to get search page")
+
+        payload = self._construct_payload(response, order_id)
+        response = self.session.post(SEARCH_URL, data=payload)
+        if response.status_code != 200:
+            raise Exception("Failed to post search request")
+        return response
+
+    def _construct_payload(self, response: requests.Response, order_id) -> dict:
+        soup = BeautifulSoup(response.text, "html.parser")
+        view_state = self._find_value_by_id(soup, "__VIEWSTATE")
+        view_state_generator = self._find_value_by_id(soup, "__VIEWSTATEGENERATOR")
+        validate_code = SevenElevenCaptchaSolver(
+            self.session, response.text
+        ).get_validate_code()
+        payload = {
+            "__EVENTTARGET": "submit",
+            "__EVENTARGUMENT": "",
+            "__VIEWSTATE": view_state,
+            "__VIEWSTATEGENERATOR": view_state_generator,
+            "txtProductNum": order_id,
+            "tbChkCode": validate_code,
+            "txtIMGName": "",
+            "txtPage": 1,
+        }
+        return payload
+
+    def _find_value_by_id(self, soup: BeautifulSoup, id: str) -> str | None:
+        tag = soup.find("input", id=id)
+        if isinstance(tag, Tag):
+            value = tag.get("value")
+            if isinstance(value, str):
+                return value
+        return None
+
+
+class SevenElevenCaptchaSolver:
+    def __init__(self, session: requests.Session, html: str):
+        """
+        Captcha solver for 7-11 e-tracking website
+
+        Paramaters
+        ----------
+        session : requests.Session
+            The session object for sending requests
+        html : str
+            The html content of the search page
+        """
+
+        self.session = session
+        self.html = html
+
+    def get_validate_code(self) -> str:
+        """
+        Get the validate code from the captcha image
+
+        Returns
+        -------
+        str
+            The validate code
+        """
+
+        validate_image = self._get_validate_image()
+        tesseract_config = "-c tessedit_char_whitelist=0123456789 --psm 8"
+        validate_code = pytesseract.image_to_string(
+            validate_image, config=tesseract_config
+        ).strip()
+        return validate_code
+
+    def _get_validate_image(self) -> Image.Image:
+        validate_image_url = self._get_validate_image_url()
+        response = self.session.get(validate_image_url)
+        if response.status_code != 200:
+            raise Exception("Failed to get validate image")
+        return Image.open(io.BytesIO(response.content))
+
+    def _get_validate_image_url(self) -> str:
+        url_suffix = re.search(r'src="(ValidateImage\.aspx\?ts=[0-9]+)"', self.html)
+        if url_suffix is not None:
+            return BASE_URL + url_suffix.group(1)
+        else:
+            raise Exception("Failed to get validate image url")
+
+
 class SevenElevenResponseParser:
     def __init__(self, html: str):
-        """Parser for 7-11 e-tracking response
-
-        :param html: html content
         """
+        Parser for 7-11 e-tracking response
+
+        Parameters
+        ----------
+        html : str
+            The html content of the response
+        """
+
         self.soup = BeautifulSoup(html, "html.parser")
         self.result = {
             "msg": None,
@@ -161,7 +223,14 @@ class SevenElevenResponseParser:
         }
 
     def parse(self) -> dict:
-        """Parse the response and extract the information"""
+        """
+        Parse the response and extract the information
+
+        Returns
+        -------
+        dict
+            The extracted information
+        """
 
         # Check if there is any alert message in the script tag
         script_tags = self.soup.find_all("script")

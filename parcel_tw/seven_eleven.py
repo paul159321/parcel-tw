@@ -22,39 +22,18 @@ class SevenElevenTracker(Tracker):
         if not self._validate_order_id(order_id):
             return None
 
-        raw_data = SevenElevenRequestHandler().get_result(order_id)
-        self.tracking_info = self._convert_to_tracking_info(raw_data)
+        try:
+            data = SevenElevenRequestHandler().get_data(order_id)
+        except Exception as e:
+            logging.error(f"[7-11] {e}")
+            return None
+
+        self.tracking_info = SevenElevenTrackingInfoAdapter.convert(data)
 
         return self.tracking_info
 
     def _validate_order_id(self, order_id: str) -> bool:
         return len(order_id) == 8 or len(order_id) == 11 or len(order_id) == 12
-
-    def _convert_to_tracking_info(self, raw_data: dict | None) -> TrackingInfo | None:
-        if raw_data is None or raw_data["result"]["info"] is None:
-            return None
-
-        order_id = raw_data["result"]["info"]["query_no"]
-
-        # Extract status and time from m_news
-        pattern = r"(.*)(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})"
-        match_obj = re.match(pattern, raw_data["m_news"])
-        if match_obj is not None:
-            status = match_obj.group(1)
-            time = match_obj.group(2)
-        else:
-            return None
-
-        is_delivered = "包裹配達取件門市" in status or "已完成包裹成功取件" in status
-
-        return TrackingInfo(
-            order_id=order_id,
-            platform="7-11",
-            status=status,
-            time=time,
-            is_delivered=is_delivered,
-            raw_data=raw_data,
-        )
 
 
 class SevenElevenRequestHandler:
@@ -71,9 +50,9 @@ class SevenElevenRequestHandler:
         self.session = requests.Session()
         self.max_retry = max_retry
 
-    def get_result(self, order_id) -> dict | None:
+    def get_data(self, order_id) -> dict | None:
         """
-        Get the tracking information from the 7-11 e-tracking website
+        Get the tracking information froms 7-11 e-tracking website
 
         Parameters
         ----------
@@ -83,23 +62,21 @@ class SevenElevenRequestHandler:
         Returns
         -------
         dict | None
-            The tracking information of the parcel
+            The tracking information of the parcel in `dict`, or `None` if failed
         """
 
         retry_counter = 0
         while retry_counter < self.max_retry:
             try:
+                logging.info(f"[7-11] Requesting tracking info for order {order_id}...")
                 response = self._post_search(order_id)
                 result = SevenElevenResponseParser(response.text).parse()
                 if result["msg"] == "驗證碼錯誤!!":
                     retry_counter += 1
-                    logging.warning(
-                        f"[7-11] Failed to get the search page, Retry {retry_counter} times"
-                    )
-                    continue
+                    raise ValueError("Incorrect captcha")
                 return result
-            except Exception as e:
-                logging.error(f"[7-11] {e}")
+            except ValueError:
+                logging.warning(f"[7-11] Captcha is incorrect, retrying... ({retry_counter}/{self.max_retry})")
 
         return None
 
@@ -284,3 +261,47 @@ class SevenElevenResponseParser:
             for shipping in shippings:
                 res.append(shipping.get_text())
         return res
+
+
+class SevenElevenTrackingInfoAdapter:
+    @staticmethod
+    def convert(raw_data: dict | None) -> TrackingInfo | None:
+        """
+        Convert the raw data to `TrackingInfo` object
+
+        Parameters
+        ----------
+        raw_data : dict | None
+            The raw data from the 7-11 e-tracking website
+
+        Returns
+        -------
+        TrackingInfo | None
+            A `TrackingInfo` object with the status details of the parcel,
+            or `None` if no information is available.
+        """
+
+        if raw_data is None or raw_data["result"]["info"] is None:
+            return None
+
+        order_id = raw_data["result"]["info"]["query_no"]
+
+        # Extract status and time from m_news
+        pattern = r"(.*)(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})"
+        match_obj = re.match(pattern, raw_data["m_news"])
+        if match_obj is not None:
+            status = match_obj.group(1)
+            time = match_obj.group(2)
+        else:
+            return None
+
+        is_delivered = "包裹配達取件門市" in status or "已完成包裹成功取件" in status
+
+        return TrackingInfo(
+            order_id=order_id,
+            platform="7-11",
+            status=status,
+            time=time,
+            is_delivered=is_delivered,
+            raw_data=raw_data,
+        )

@@ -3,6 +3,7 @@ from .enums import Platform
 from .family_mart import FamilyMartTracker
 from .okmart import OKMartTracker
 from .seven_eleven import SevenElevenTracker
+from .shopee import ShopeeTracker
 
 
 class TrackerFactory:
@@ -34,6 +35,8 @@ class TrackerFactory:
                 return FamilyMartTracker()
             case Platform.OKMart:
                 return OKMartTracker()
+            case Platform.Shopee:
+                return ShopeeTracker()
             case _:
                 raise ValueError(f"Invalid platform: {platform}")
 

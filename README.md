@@ -7,7 +7,7 @@
 
 ## About
 
-parcel_tw 是一個查詢台灣包裹進度的 Python package，支援多家的物流系統(7-11、OK)。
+parcel_tw 是一個查詢台灣包裹進度的 Python package，支援多家的物流系統(7-11、全家、OK、蝦皮店到店)。
 
 ## Installation
 
@@ -61,6 +61,7 @@ print(result.raw_data) # 爬蟲分析後的包裹詳細資料 (dict)
 - [x] OK Mart
 - [x] 蝦皮店到店
 - [ ] 中華郵政
+- [ ] 上架到 PyPI
 - [ ] asyncio 異步爬蟲
 
 ## License

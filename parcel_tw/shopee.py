@@ -1,13 +1,15 @@
 import logging
 import time
 from hashlib import sha256
+from typing import Final
 
 import requests
 
 from .base import Tracker, TrackingInfo
+from .enums import Platform
 
-SEARCH_URL = "https://spx.tw/api/v2/fleet_order/tracking/search"
-SALT = b"MGViZmZmZTYzZDJhNDgxY2Y1N2ZlN2Q1ZWJkYzlmZDY="  # Shopee API hashing salt
+SEARCH_URL: Final = "https://spx.tw/api/v2/fleet_order/tracking/search"
+SALT: Final = b"MGViZmZmZTYzZDJhNDgxY2Y1N2ZlN2Q1ZWJkYzlmZDY="  # Shopee API hashing salt
 
 
 class ShopeeTracker(Tracker):
@@ -105,7 +107,7 @@ class ShopeeTrackingInfoAdapter:
 
         return TrackingInfo(
             order_id=order_id,
-            platform="Shopee",
+            platform=Platform.Shopee.value,
             status=latest_status_message,
             time=datetime,
             is_delivered=is_delivered,

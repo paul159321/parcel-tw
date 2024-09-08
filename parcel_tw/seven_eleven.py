@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup, Tag
 from PIL import Image
 
 from .base import Tracker, TrackingInfo
+from .enums import Platform
 
 BASE_URL: Final = "https://eservice.7-11.com.tw/e-tracking/"
 SEARCH_URL: Final = BASE_URL + "search.aspx"
@@ -76,7 +77,9 @@ class SevenElevenRequestHandler:
                     raise ValueError("Incorrect captcha")
                 return result
             except ValueError:
-                logging.warning(f"[7-11] Captcha is incorrect, retrying... ({retry_counter}/{self.max_retry})")
+                logging.warning(
+                    f"[7-11] Captcha is incorrect, retrying... ({retry_counter}/{self.max_retry})"
+                )
 
         return None
 
@@ -299,7 +302,7 @@ class SevenElevenTrackingInfoAdapter:
 
         return TrackingInfo(
             order_id=order_id,
-            platform="7-11",
+            platform=Platform.SevenEleven.value,
             status=status,
             time=time,
             is_delivered=is_delivered,

@@ -6,6 +6,7 @@ import requests
 from requests.adapters import HTTPAdapter
 
 from .base import Tracker, TrackingInfo
+from .enums import Platform
 
 
 # stackoveflow solution for requests.exceptions.SSLError
@@ -61,7 +62,7 @@ class FamilyMartTracker(Tracker):
         )
         return TrackingInfo(
             order_id=order_id,
-            platform="FamilyMart",
+            platform=Platform.FamilyMart.value,
             status=status_message,
             time=time,
             is_delivered=is_delivered,

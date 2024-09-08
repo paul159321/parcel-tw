@@ -6,9 +6,11 @@ import requests
 from bs4 import BeautifulSoup
 
 from .base import Tracker, TrackingInfo
+from .enums import Platform
 
 VALIDATE_URL: Final = "https://ecservice.okmart.com.tw/Tracking/ValidateNumber.ashx"
 RESULT_URL: Final = "https://ecservice.okmart.com.tw/Tracking/Result"
+
 
 class OKMartTracker(Tracker):
     def __init__(self) -> None:
@@ -133,6 +135,7 @@ class OKMartResponseParser:
         else:
             return None
 
+
 class OKMartTrackingInfoAdapter:
     @staticmethod
     def convert(raw_data: dict) -> TrackingInfo | None:
@@ -161,7 +164,7 @@ class OKMartTrackingInfoAdapter:
 
         return TrackingInfo(
             order_id=order_id,
-            platform="OKMart",
+            platform=Platform.OKMart.value,
             time=None,
             status=status,
             is_delivered=is_delivered,

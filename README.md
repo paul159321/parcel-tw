@@ -1,13 +1,18 @@
-# parcel_tw
+# parcel-tw
 
 <p align="center">
-    <img src="img/box.png" width=100>
+    <img src="img/box.png" width=100><br>
     <a href="https://www.flaticon.com/free-icons/box" title="box icons">Box icons created by Good Ware - Flaticon</a>
+</p>
+
+<p align="center">
+    <img href="https://img.shields.io/github/license/ryanycs/parcel-tw" alt=""><br>
+    <b>English</b> <a href="doc/README_zh-tw.md">繁體中文</a>
 </p>
 
 ## About
 
-parcel_tw 是一個查詢台灣包裹進度的 Python package，支援多家的物流系統(7-11、全家、OK、蝦皮店到店)。
+parcel_tw is a Python package for tracking the status of packages in Taiwan. It supports many logistics systems (7-11, FamilyMart, OK, and Shopee).
 
 ## Installation
 
@@ -16,15 +21,15 @@ parcel_tw 是一個查詢台灣包裹進度的 Python package，支援多家的�
 - Python 3.10+
 - tesseract-ocr
 
-因為 7-11 的 E-Tracking 貨態查詢系統無法繞過 Captcha 檢測，所以需要使用 OCR 來解析驗證碼。
+Since the E-tracking system of 7-11 cannot bypass the Captcha detection, OCR is needed to parse the verification code.
 
 ```sudo apt install tesseract-ocr```
 
 ### Install package manually
 
 ```bash
-git clone https://github.com/ryanycs/parcel_tw.git
-cd parcel_tw
+git clone https://github.com/ryanycs/parcel-tw.git
+cd parcel-tw
 pip install .
 ```
 
@@ -34,35 +39,35 @@ pip install .
 from parcel_tw import track, Platform
 
 order_id = "order_id here"
-track(Platform.SevenEleven, order_id) # 查詢 7-11 包裹
-track(Platform.FamilyMart, order_id) # 查詢全家包裹
-track(Platform.OKMart, order_id) # 查詢 OK Mart 包裹
-track(Platform.Shopee, order_id) # 查詢蝦皮店到店包裹
+track(Platform.SevenEleven, order_id) # track 7-11 package
+track(Platform.FamilyMart, order_id) # track FamilyMart package
+track(Platform.OKMart, order_id) # track OK Mart package
+track(Platform.Shopee, order_id) # track Shopee package
 ```
 
-track 會返回一個 TrackingInfo 物件，可以取得包裹的狀態。
+`track()` will return a `TrackingInfo` object, which contains the status of the package.
 
 ```python
 result = track(Platform.SevenEleven, order_id)
 
-print(result.order_id) # 取貨編號
-print(result.platform) # 物流平台
-print(result.status) # 包裹狀態
-print(result.time) # 更新時間
-print(result.is_delivered) # 是否已送達
-print(result.raw_data) # 爬蟲分析後的包裹詳細資料 (dict)
+print(result.order_id) # order id
+print(result.platform) # logistics platform
+print(result.status) # package status
+print(result.time) # update time
+print(result.is_delivered) # is delivered
+print(result.raw_data) # Package details after crawler analysis (dict)
 ```
 
 ## Roadmap
 
 - [x] 7-11
-- [x] 全家
-- [ ] 萊爾富
+- [x] FamilyMart
+- [ ] Hi-Life
 - [x] OK Mart
-- [x] 蝦皮店到店
-- [ ] 中華郵政
-- [ ] 上架到 PyPI
-- [ ] asyncio 異步爬蟲
+- [x] Shopee
+- [ ] Chunghwa Post
+- [ ] Upload to PyPI
+- [ ] asyncio crawler
 
 ## License
 

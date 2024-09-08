@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-    <img href="https://img.shields.io/github/license/ryanycs/parcel-tw" alt=""><br>
+    <img src="https://img.shields.io/github/license/ryanycs/parcel-tw" alt=""><br>
     <a href="../README.md">English</a> <b>繁體中文</b>
 </p>
 

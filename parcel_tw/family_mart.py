@@ -55,7 +55,7 @@ class FamilyMartTracker(Tracker):
         latest_status = status_list[0]  # First element in the list is the latest status
 
         order_id = latest_status["ORDER_NO"]
-        time = latest_status["ORDER_DATE_R"]
+        time = latest_status["ORDER_DATE_R"] + ":00"  # Add seconds to the time
         status_message = latest_status["STATUS_D"]
         is_delivered = (
             "貨件配達取件店舖" in status_message or "已完成取件" in status_message

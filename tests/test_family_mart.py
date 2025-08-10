@@ -14,10 +14,10 @@ DEFAULT = "\033[0m"
 def test_family_mart():
     assert FAMILY_MART_ORDER_ID is not None
 
-    result = track(Platform.FamilyMart, FAMILY_MART_ORDER_ID)
+    result = track(FAMILY_MART_ORDER_ID, Platform.FamilyMart)
     assert result is not None
     logging.info(f"{RED}{result.order_id}{DEFAULT} - {result.status}")
 
 def test_family_mart_invalid_order_id():
-    result = track(Platform.FamilyMart, "1234567890")
+    result = track("1234567890", Platform.FamilyMart)
     assert result is None

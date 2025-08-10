@@ -15,12 +15,12 @@ DEFAULT = "\033[0m"
 def test_shopee_valid_order_id():
     assert SHOPEE_ORDER_ID is not None
 
-    result = track(Platform.Shopee, SHOPEE_ORDER_ID)
+    result = track(SHOPEE_ORDER_ID, Platform.Shopee)
     assert result is not None
     logging.info(f"{RED}{result.order_id}{DEFAULT} - {result.status}")
 
 
 def test_shopee_invalid_order_id():
-    result = track(Platform.Shopee, "1234567890")
+    result = track("1234567890", Platform.Shopee)
     assert result is None
 

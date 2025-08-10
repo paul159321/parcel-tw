@@ -15,11 +15,11 @@ DEFAULT = "\033[0m"
 def test_okmart():
     assert OKMART_ORDER_ID is not None
 
-    result = track(Platform.OKMart, OKMART_ORDER_ID)
+    result = track(OKMART_ORDER_ID, Platform.OKMart)
     assert result is not None
     logging.info(f"{RED}{result.order_id}{DEFAULT} - {result.status}")
 
 
 def test_okmart_invalid_order_id():
-    result = track(Platform.OKMart, "123456789")
+    result = track("123456789", Platform.OKMart)
     assert result is None

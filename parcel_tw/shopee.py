@@ -3,9 +3,7 @@ import time
 from hashlib import sha256
 from typing import Final
 
-import requests
-
-from .base import Tracker, TrackingInfo
+from .base import Tracker, TrackingInfo, RequestHandler, TrackingInfoAdapter
 from .enums import Platform
 
 SEARCH_URL: Final = "https://spx.tw/api/v2/fleet_order/tracking/search"
@@ -29,25 +27,11 @@ class ShopeeTracker(Tracker):
         return self.tracking_info
 
 
-class ShopeeRequestHandler:
+class ShopeeRequestHandler(RequestHandler):
     def __init__(self):
-        self.session = requests.Session()
+        super().__init__()
 
     def get_data(self, order_id: str) -> dict:
-        """
-        Get tracking info from Shopee API
-
-        Parameters:
-        -----------
-        order_id: str
-            Shopee order ID
-
-        Returns:
-        --------
-        dict
-            The tracking information of the parcel in `dict`, or `None` if failed
-        """
-
         timestamp = int(time.time())
         headers = {
             "cookie": "fms_language=tw",
@@ -68,24 +52,9 @@ class ShopeeRequestHandler:
         return response.json()
 
 
-class ShopeeTrackingInfoAdapter:
+class ShopeeTrackingInfoAdapter(TrackingInfoAdapter):
     @staticmethod
     def convert(raw_data: dict) -> TrackingInfo | None:
-        """
-        Convert the raw data to `TrackingInfo` object
-
-        Parameters
-        ----------
-        raw_data : dict
-            The raw data from the Shopee API
-
-        Returns
-        -------
-        TrackingInfo | None
-            A `TrackingInfo` object with the status details of the parcel,
-            or `None` if no information is available.
-        """
-
         data = raw_data["data"]
         if data is None or len(data) == 0:
             return None

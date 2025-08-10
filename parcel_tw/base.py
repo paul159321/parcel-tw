@@ -1,3 +1,4 @@
+import requests
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
@@ -22,6 +23,49 @@ class Tracker(ABC):
         ----------
         order_id : str
             The order_id of the parcel
+
+        Returns
+        -------
+        TrackingInfo | None
+            A `TrackingInfo` object with the status details of the parcel,
+            or `None` if no information is available.
+        """
+        pass
+
+
+class RequestHandler(ABC):
+    def __init__(self):
+        self.session = requests.Session()
+
+    @abstractmethod
+    def get_data(self, order_id: str) -> dict:
+        """
+        Get tracking info from the platform API
+
+        Parameters
+        ----------
+        order_id: str
+            The order ID of the parcel
+
+        Returns
+        -------
+        dict
+            The tracking information of the parcel in `dict`, or `None` if failed
+        """
+        pass
+
+
+class TrackingInfoAdapter(ABC):
+    @staticmethod
+    @abstractmethod
+    def convert(raw_data: dict | None) -> TrackingInfo | None:
+        """
+        Convert the raw data to `TrackingInfo` object
+
+        Parameters
+        ----------
+        raw_data : dict | None
+            The raw data from the platform API
 
         Returns
         -------

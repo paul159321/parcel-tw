@@ -5,7 +5,7 @@ from typing import Final
 import requests
 from bs4 import BeautifulSoup
 
-from .base import Tracker, TrackingInfo
+from .base import Tracker, TrackingInfo, RequestHandler, TrackingInfoAdapter
 from .enums import Platform
 
 VALIDATE_URL: Final = "https://ecservice.okmart.com.tw/Tracking/ValidateNumber.ashx"
@@ -29,34 +29,11 @@ class OKMartTracker(Tracker):
         return self.tracking_info
 
 
-class OKMartRequestHandler:
+class OKMartRequestHandler(RequestHandler):
     def __init__(self):
-        """
-        Request handler for OKMart website
-
-        Parameters
-        ----------
-        max_retry : int
-            The maximum number of retries when the captcha is incorrect
-        """
-
-        self.session = requests.Session()
+        super().__init__()
 
     def get_data(self, order_id: str) -> dict:
-        """
-        Get the tracking information froms OKMart website
-
-        Parameters
-        ----------
-        order_id : str
-            The order_id of the parcel
-
-        Returns
-        -------
-        dict | None
-            The tracking information of the parcel in `dict`, or `None` if failed
-        """
-
         validate_code = self._get_validate_code()
 
         if validate_code is None:
@@ -136,24 +113,9 @@ class OKMartResponseParser:
             return None
 
 
-class OKMartTrackingInfoAdapter:
+class OKMartTrackingInfoAdapter(TrackingInfoAdapter):
     @staticmethod
     def convert(raw_data: dict) -> TrackingInfo | None:
-        """
-        Convert the raw data to `TrackingInfo` object
-
-        Parameters
-        ----------
-        raw_data : dict | None
-            The raw data from the 7-11 e-tracking website
-
-        Returns
-        -------
-        TrackingInfo | None
-            A `TrackingInfo` object with the status details of the parcel,
-            or `None` if no information is available.
-        """
-
         if raw_data["odNo"] is None:
             return None
 

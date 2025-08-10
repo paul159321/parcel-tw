@@ -8,7 +8,7 @@ import requests
 from bs4 import BeautifulSoup, Tag
 from PIL import Image
 
-from .base import Tracker, TrackingInfo
+from .base import Tracker, TrackingInfo, RequestHandler, TrackingInfoAdapter
 from .enums import Platform
 
 BASE_URL: Final = "https://eservice.7-11.com.tw/e-tracking/"
@@ -37,35 +37,19 @@ class SevenElevenTracker(Tracker):
         return len(order_id) == 8 or len(order_id) == 11 or len(order_id) == 12
 
 
-class SevenElevenRequestHandler:
+class SevenElevenRequestHandler(RequestHandler):
     def __init__(self, max_retry: int = 5):
         """
-        Request handler for 7-11 e-tracking website
-
         Parameters
         ----------
         max_retry : int
             The maximum number of retries when the captcha is incorrect
         """
 
-        self.session = requests.Session()
+        super().__init__()
         self.max_retry = max_retry
 
     def get_data(self, order_id) -> dict | None:
-        """
-        Get the tracking information froms 7-11 e-tracking website
-
-        Parameters
-        ----------
-        order_id : str
-            The order_id of the parcel
-
-        Returns
-        -------
-        dict | None
-            The tracking information of the parcel in `dict`, or `None` if failed
-        """
-
         retry_counter = 0
         while retry_counter < self.max_retry:
             try:
@@ -266,24 +250,9 @@ class SevenElevenResponseParser:
         return res
 
 
-class SevenElevenTrackingInfoAdapter:
+class SevenElevenTrackingInfoAdapter(TrackingInfoAdapter):
     @staticmethod
     def convert(raw_data: dict | None) -> TrackingInfo | None:
-        """
-        Convert the raw data to `TrackingInfo` object
-
-        Parameters
-        ----------
-        raw_data : dict | None
-            The raw data from the 7-11 e-tracking website
-
-        Returns
-        -------
-        TrackingInfo | None
-            A `TrackingInfo` object with the status details of the parcel,
-            or `None` if no information is available.
-        """
-
         if raw_data is None or raw_data["result"]["info"] is None:
             return None
 

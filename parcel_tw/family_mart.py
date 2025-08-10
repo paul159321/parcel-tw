@@ -5,8 +5,10 @@ import ssl
 import requests
 from requests.adapters import HTTPAdapter
 
-from .base import Tracker, TrackingInfo
+from .base import Tracker, TrackingInfo, RequestHandler, TrackingInfoAdapter
 from .enums import Platform
+
+SEARCH_URL = "https://ecfme.fme.com.tw/FMEDCFPWebV2_II/list.aspx/GetOrderDetail"
 
 
 # stackoveflow solution for requests.exceptions.SSLError
@@ -21,33 +23,48 @@ class TLSAdapter(HTTPAdapter):
 
 
 class FamilyMartTracker(Tracker):
-    SEARCH_URL = "https://ecfme.fme.com.tw/FMEDCFPWebV2_II/list.aspx/GetOrderDetail"
-
     def __init__(self):
-        self.session = requests.Session()
-        self.session.mount("https://", TLSAdapter())  # used to avoid SSLError
         self.tracking_info = None
 
     def track_status(self, order_id: str) -> TrackingInfo | None:
-        headers = {"Content-Type": "application/json; charset=UTF-8"}
+        try:
+            data = FamilyMartRequestHandler().get_data(order_id)
+        except Exception as e:
+            logging.error(f"[FamilyMart] {e}")
+            return None
 
-        payload = {"EC_ORDER_NO": order_id, "ORDER_NO": order_id, "RCV_USER_NAME": None}
-        logging.info("[FamilyMart] Sending post request to the search page...")
-        response = self.session.post(self.SEARCH_URL, json=payload, headers=headers)
-
-        logging.info("[FamilyMart] Parsing the response...")
-        raw_data = self._parse_response(response.text)
-        self.tracking_info = self._convert_to_tracking_info(raw_data)
+        self.tracking_info = FamilyMartTrackingInfoAdapter.convert(data)
 
         return self.tracking_info
 
+
+class FamilyMartRequestHandler(RequestHandler):
+    def __init__(self):
+        super().__init__()
+        self.session.mount("https://", TLSAdapter())  # used to avoid SSLError
+
+    def get_data(self, order_id: str) -> dict:
+        logging.info("[FamilyMart] Sending post request to the search page...")
+
+        headers = {"Content-Type": "application/json; charset=UTF-8"}
+        payload = {"EC_ORDER_NO": order_id, "ORDER_NO": order_id, "RCV_USER_NAME": None}
+
+        response = self.session.post(SEARCH_URL, json=payload, headers=headers)
+
+        result = self._parse_response(response.text)
+        return result
+
     def _parse_response(self, response):
+        logging.info("[FamilyMart] Parsing the response...")
         s = response.replace("\\", "")
         json_data = json.loads(s[6:-2])
 
         return json_data
 
-    def _convert_to_tracking_info(self, raw_data) -> TrackingInfo | None:
+
+class FamilyMartTrackingInfoAdapter(TrackingInfoAdapter):
+    @staticmethod
+    def convert(raw_data: dict) -> TrackingInfo | None:
         if len(raw_data["List"]) == 0:
             return None
 

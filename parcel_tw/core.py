@@ -41,7 +41,7 @@ class TrackerFactory:
                 raise ValueError(f"Invalid platform: {platform}")
 
 
-def track(platform: Platform, order_id: str) -> TrackingInfo | None:
+def track(order_id: str, platform: Platform) -> TrackingInfo | None:
     """
     Track the parcel status by order_id
 
@@ -49,6 +49,8 @@ def track(platform: Platform, order_id: str) -> TrackingInfo | None:
     ----------
     order_id : str
         The order_id of the parcel
+    platform : Platform
+        The platform of the parcel
 
     Returns
     -------

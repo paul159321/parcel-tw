@@ -40,16 +40,16 @@ pip install .
 from parcel_tw import track, Platform
 
 order_id = "order_id here"
-track(Platform.SevenEleven, order_id) # 查詢 7-11 包裹
-track(Platform.FamilyMart, order_id) # 查詢全家包裹
-track(Platform.OKMart, order_id) # 查詢 OK Mart 包裹
-track(Platform.Shopee, order_id) # 查詢蝦皮店到店包裹
+track(order_id, Platform.SevenEleven) # 查詢 7-11 包裹
+track(order_id, Platform.FamilyMart) # 查詢全家包裹
+track(order_id, Platform.OKMart) # 查詢 OK Mart 包裹
+track(order_id, Platform.Shopee) # 查詢蝦皮店到店包裹
 ```
 
-`track()` 會返回一個 `TrackingInfo` 物件，可以取得包裹的狀態。
+`track()` 會回傳一個 `TrackingInfo` 物件，可以取得包裹的狀態。
 
 ```python
-result = track(Platform.SevenEleven, order_id)
+result = track(order_id, Platform.SevenEleven)
 
 print(result.order_id) # 取貨編號
 print(result.platform) # 物流平台

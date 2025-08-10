@@ -39,16 +39,16 @@ pip install .
 from parcel_tw import track, Platform
 
 order_id = "order_id here"
-track(Platform.SevenEleven, order_id) # track 7-11 package
-track(Platform.FamilyMart, order_id) # track FamilyMart package
-track(Platform.OKMart, order_id) # track OK Mart package
-track(Platform.Shopee, order_id) # track Shopee package
+track(order_id, Platform.SevenEleven) # track 7-11 package
+track(order_id, Platform.FamilyMart) # track FamilyMart package
+track(order_id, Platform.OKMart) # track OK Mart package
+track(order_id, Platform.Shopee) # track Shopee package
 ```
 
 `track()` will return a `TrackingInfo` object, which contains the status of the package.
 
 ```python
-result = track(Platform.SevenEleven, order_id)
+result = track(order_id, Platform.SevenEleven)
 
 print(result.order_id) # order id
 print(result.platform) # logistics platform

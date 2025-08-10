@@ -1,7 +1,7 @@
 # parcel-tw
 
 <p align="center">
-    <img src="img/box.png" width=100><br>
+    <img src="https://raw.githubusercontent.com/ryanycs/parcel-tw/main/img/box.png" width=100><br>
     <a href="https://www.flaticon.com/free-icons/box" title="box icons">Box icons created by Good Ware - Flaticon</a>
 </p>
 
@@ -25,12 +25,10 @@ Since the E-tracking system of 7-11 cannot bypass the Captcha detection, OCR is 
 
 ```sudo apt install tesseract-ocr```
 
-### Install package manually
+### Install via pip
 
 ```bash
-git clone https://github.com/ryanycs/parcel-tw.git
-cd parcel-tw
-pip install .
+$ pip install parcel-tw
 ```
 
 ## Usage
@@ -66,7 +64,7 @@ print(result.raw_data) # Package details after crawler analysis (dict)
 - [x] OK Mart
 - [x] Shopee
 - [ ] Chunghwa Post
-- [ ] Upload to PyPI
+- [x] Upload to PyPI
 - [ ] asyncio crawler
 
 ## License

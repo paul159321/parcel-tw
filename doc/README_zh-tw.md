@@ -1,7 +1,7 @@
 # parcel-tw
 
 <p align="center">
-    <img src="../img/box.png" width=100><br>
+    <img src="https://raw.githubusercontent.com/ryanycs/parcel-tw/main/img/box.png" width=100><br>
     <a href="https://www.flaticon.com/free-icons/box" title="box icons">Box icons created by Good Ware - Flaticon</a>
 </p>
 
@@ -26,12 +26,10 @@ parcel_tw 是一個查詢台灣包裹進度的 Python package，支援多家的�
 
 ```sudo apt install tesseract-ocr```
 
-### Install package manually
+### Install via pip
 
 ```bash
-git clone https://github.com/ryanycs/parcel-tw.git
-cd parcel-tw
-pip install .
+$ pip install parcel-tw
 ```
 
 ## Usage
@@ -67,7 +65,7 @@ print(result.raw_data) # 爬蟲分析後的包裹詳細資料 (dict)
 - [x] OK Mart
 - [x] 蝦皮店到店
 - [ ] 中華郵政
-- [ ] 上架到 PyPI
+- [x] 上架到 PyPI
 - [ ] asyncio 異步爬蟲
 
 ## License

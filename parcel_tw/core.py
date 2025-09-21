@@ -4,6 +4,7 @@ from .family_mart import FamilyMartTracker
 from .okmart import OKMartTracker
 from .seven_eleven import SevenElevenTracker
 from .shopee import ShopeeTracker
+from .hct import HctTracker
 
 
 class TrackerFactory:
@@ -37,11 +38,13 @@ class TrackerFactory:
                 return OKMartTracker()
             case Platform.Shopee:
                 return ShopeeTracker()
+            case Platform.Hct:
+                return HctTracker()
             case _:
                 raise ValueError(f"Invalid platform: {platform}")
 
 
-def track(order_id: str, platform: Platform) -> TrackingInfo | None:
+def track(platform: Platform, order_id: str) -> TrackingInfo | None:
     """
     Track the parcel status by order_id
 
@@ -49,8 +52,6 @@ def track(order_id: str, platform: Platform) -> TrackingInfo | None:
     ----------
     order_id : str
         The order_id of the parcel
-    platform : Platform
-        The platform of the parcel
 
     Returns
     -------

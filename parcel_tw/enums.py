@@ -6,3 +6,4 @@ class Platform(Enum):
     FamilyMart = "family_mart"
     OKMart = "ok_mart"
     Shopee = "shopee"
+    Hct = "hct"

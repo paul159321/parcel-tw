@@ -5,6 +5,7 @@ from .okmart import OKMartTracker
 from .seven_eleven import SevenElevenTracker
 from .shopee import ShopeeTracker
 from .hct import HctTracker
+from .tcat import TcatTracker
 
 
 class TrackerFactory:
@@ -40,6 +41,8 @@ class TrackerFactory:
                 return ShopeeTracker()
             case Platform.Hct:
                 return HctTracker()
+            case Platform.Tcat:
+                return TcatTracker()
             case _:
                 raise ValueError(f"Invalid platform: {platform}")
 

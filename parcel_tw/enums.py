@@ -7,3 +7,4 @@ class Platform(Enum):
     OKMart = "ok_mart"
     Shopee = "shopee"
     Hct = "hct"
+    Tcat = "tcat"

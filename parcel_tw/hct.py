@@ -28,7 +28,6 @@ class HctTracker(Tracker):
             logging.error(f"[HCT] {e}")
             return None
 
-        logging.info("[HCT] Parsing the response...")
         self.tracking_info = HctTrackingInfoAdapter.convert(tracking_number, data)
 
         return self.tracking_info

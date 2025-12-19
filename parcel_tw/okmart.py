@@ -45,7 +45,7 @@ class OKMartRequestHandler(RequestHandler):
         return result
 
     def _get_validate_code(self) -> str | None:
-        logging.info("[OKMart] Getting validate code...")
+        #logging.info("[OKMart] Getting validate code...")
         response = self.session.get(VALIDATE_URL)
 
         cookie = response.headers["Set-Cookie"]
@@ -56,7 +56,7 @@ class OKMartRequestHandler(RequestHandler):
     def _get_search_result(
         self, order_id: str, validate_code: str
     ) -> requests.Response:
-        logging.info("[OKMart] Getting search result...")
+        #logging.info("[OKMart] Getting search result...")
         headers = {
             "Cookie": f"ValidateNumber=code={validate_code}&odno={order_id}&cutknm=&cutktl="
         }

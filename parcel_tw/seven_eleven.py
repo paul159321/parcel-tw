@@ -69,7 +69,7 @@ class SevenElevenRequestHandler:
         retry_counter = 0
         while retry_counter < self.max_retry:
             try:
-                logging.info(f"[7-11] Requesting tracking info for order {order_id}...")
+                #logging.info(f"[7-11] Requesting tracking info for order {order_id}...")
                 response = self._post_search(order_id)
                 result = SevenElevenResponseParser(response.text).parse()
                 if result["msg"] == "驗證碼錯誤!!":

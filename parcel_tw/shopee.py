@@ -21,7 +21,7 @@ class ShopeeTracker(Tracker):
             logging.error(f"[Shopee] {e}")
             return None
 
-        logging.info("[Shopee] Parsing the response...")
+        #logging.info("[Shopee] Parsing the response...")
         self.tracking_info = ShopeeTrackingInfoAdapter.convert(data)
 
         return self.tracking_info
@@ -42,7 +42,7 @@ class ShopeeRequestHandler(RequestHandler):
             + str(timestamp)
             + sha256(order_id.encode() + str(timestamp).encode() + SALT).hexdigest()
         }
-        logging.info(f"[Shopee] Requesting tracking info for order {order_id}...")
+        #logging.info(f"[Shopee] Requesting tracking info for order {order_id}...")
         response = self.session.get(SEARCH_URL, params=params, headers=headers)
         if response.status_code != 200:
             raise Exception(

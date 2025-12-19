@@ -8,3 +8,5 @@ class Platform(Enum):
     Shopee = "shopee"
     Hct = "hct"
     Tcat = "tcat"
+    Ecan = "ecan"
+    Ktj = "ktj"

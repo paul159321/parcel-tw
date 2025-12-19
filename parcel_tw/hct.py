@@ -28,19 +28,24 @@ class HctTracker(Tracker):
             logging.error(f"[HCT] {e}")
             return None
 
+        #logging.info("[HCT] Parsing the response...")
         self.tracking_info = HctTrackingInfoAdapter.convert(tracking_number, data)
-
         return self.tracking_info
 
 
 class HctRequestHandler:
     def __init__(self, reuse_session: bool = True):
-        """
-        :param reuse_session: True = 失敗時仍保留同一個 session（預設）
-                              False = 每次嘗試都用新的 session
-        """
         self.reuse_session = reuse_session
         self.session = requests.Session()
+
+        self.session.headers.update(
+            {
+                "User-Agent": "Mozilla/5.0 (compatible; HctTracker/1.0)",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
+            }
+        )
+
         self.ocr = ddddocr.DdddOcr(show_ad=False)
 
     def _reset_session_if_needed(self):
@@ -51,94 +56,145 @@ class HctRequestHandler:
         except Exception:
             pass
         self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "User-Agent": "Mozilla/5.0 (compatible; HctTracker/1.0)",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
+            }
+        )
 
     def _random_delay(self):
-        """隨機延遲 0.5 ~ 1.5 秒"""
         time.sleep(random.uniform(0.5, 1.5))
 
-    def _get_captcha_and_viewstate(self) -> tuple[str, str]:
+    def _extract_tokens(self, soup: BeautifulSoup) -> dict | None:
+        vs = soup.select_one('input[id="__VIEWSTATE"]')
+        if not vs or not vs.get("value"):
+            return None
+
+        vsg = soup.select_one('input[id="__VIEWSTATEGENERATOR"]')
+        ev = soup.select_one('input[id="__EVENTVALIDATION"]')
+
+        return {
+            "__VIEWSTATE": vs["value"],
+            "__VIEWSTATEGENERATOR": vsg["value"] if vsg and vsg.get("value") else None,
+            "__EVENTVALIDATION": ev["value"] if ev and ev.get("value") else None,
+        }
+
+    def _find_captcha_img(self, soup: BeautifulSoup):
+        return soup.select_one(
+            'img[name="imgCode"], img#imgCode, img[src*="imgCode"], img[src*="code"]'
+        )
+
+    def _get_captcha_and_tokens(self) -> tuple[dict, str]:
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                search_result = self.session.get(SEARCH_URL, timeout=10)
+                resp = self.session.get(SEARCH_URL, timeout=10, allow_redirects=False)
             except Exception as e:
-                logging.warning(f"[HCT] 第 {attempt} 次請求 SEARCH_URL 發生例外: {e}，準備重試...")
+                logging.warning(f"[HCT] SEARCH_URL 例外（第 {attempt} 次）: {e}")
                 self._reset_session_if_needed()
                 self._random_delay()
                 continue
 
-            soup = BeautifulSoup(search_result.content, "html.parser")
-            vs_tag = soup.find("input", {"id": "__VIEWSTATE"})
-            img_tag = soup.find("img", {"name": "imgCode"})
-            if not vs_tag or not img_tag:
-                logging.warning(f"[HCT] 無法取得 __VIEWSTATE 或 imgCode（第 {attempt} 次），重試中...")
+            if 300 <= resp.status_code < 400:
+                logging.warning(
+                    f"[HCT] SEARCH_URL redirect（第 {attempt} 次）, status={resp.status_code}"
+                )
                 self._reset_session_if_needed()
                 self._random_delay()
                 continue
 
-            viewstate = vs_tag.get("value", "")
+            if resp.status_code != 200 or not resp.content:
+                logging.warning(
+                    f"[HCT] SEARCH_URL 回傳異常（第 {attempt} 次）, status={resp.status_code}"
+                )
+                self._reset_session_if_needed()
+                self._random_delay()
+                continue
+
+            soup = BeautifulSoup(resp.content, "html.parser")
+            tokens = self._extract_tokens(soup)
+            img_tag = self._find_captcha_img(soup)
+
+            if not tokens or not img_tag or not img_tag.get("src"):
+                logging.warning(f"[HCT] 缺少 WebForm token 或 captcha（第 {attempt} 次）")
+                self._reset_session_if_needed()
+                self._random_delay()
+                continue
+
             img_url = urljoin(SEARCH_URL, img_tag["src"])
             try:
                 img_resp = self.session.get(img_url, timeout=10)
             except Exception as e:
-                logging.warning(f"[HCT] 下載驗證碼發生例外 (第 {attempt} 次): {e}，重試中...")
+                logging.warning(f"[HCT] captcha 下載失敗（第 {attempt} 次）: {e}")
                 self._reset_session_if_needed()
                 self._random_delay()
                 continue
 
             if img_resp.status_code != 200 or not img_resp.content:
-                logging.warning(f"[HCT] 下載驗證碼失敗 (status={img_resp.status_code})（第 {attempt} 次），重試中...")
+                logging.warning(
+                    f"[HCT] captcha 回傳異常（第 {attempt} 次）, status={img_resp.status_code}"
+                )
                 self._reset_session_if_needed()
                 self._random_delay()
                 continue
 
             try:
-                captcha_text = self.ocr.classification(img_resp.content)
+                captcha = self.ocr.classification(img_resp.content)
             except Exception as e:
-                logging.warning(f"[HCT] OCR 失敗 (第 {attempt} 次): {e}，重試中...")
+                logging.warning(f"[HCT] OCR 失敗（第 {attempt} 次）: {e}")
                 self._reset_session_if_needed()
                 self._random_delay()
                 continue
 
-            if isinstance(captcha_text, str) and len(captcha_text) == 4:
-                return viewstate, captcha_text
+            if isinstance(captcha, str):
+                captcha = captcha.strip()
 
-            logging.warning(f"[HCT] OCR 回傳格式不正確（{captcha_text}）（第 {attempt} 次），重試中...")
+            if isinstance(captcha, str) and len(captcha) == 4:
+                return tokens, captcha
+
+            logging.warning(f"[HCT] OCR 結果不合法（{captcha}）（第 {attempt} 次）")
             self._reset_session_if_needed()
             self._random_delay()
 
-        raise Exception("超過最大嘗試次數，仍無法取得有效驗證碼")
+        raise Exception("超過最大嘗試次數，無法取得有效驗證碼")
 
     def get_data(self, tracking_number: str) -> dict:
-        viewstate, captcha = self._get_captcha_and_viewstate()
-        # 中繼查詢
+        tokens, captcha = self._get_captcha_and_tokens()
+
         middle_data = {
-            "__VIEWSTATE": viewstate,
-            "__VIEWSTATEGENERATOR": "A6946E2E",
+            "__VIEWSTATE": tokens["__VIEWSTATE"],
             "ctl00$ContentFrame$txtpKey": tracking_number,
             "ctl00$ContentFrame$txt_chk": captcha,
             "ctl00$ContentFrame$Button1": "查詢 >",
         }
+        if tokens.get("__VIEWSTATEGENERATOR"):
+            middle_data["__VIEWSTATEGENERATOR"] = tokens["__VIEWSTATEGENERATOR"]
+        if tokens.get("__EVENTVALIDATION"):
+            middle_data["__EVENTVALIDATION"] = tokens["__EVENTVALIDATION"]
+
         try:
-            middle_response = self.session.post(SEARCH_URL, data=middle_data, timeout=10)
+            middle_resp = self.session.post(SEARCH_URL, data=middle_data, timeout=10)
         except Exception as e:
-            self._reset_session_if_needed()
             raise Exception(f"中繼查詢失敗: {e}")
 
-        middle_soup = BeautifulSoup(middle_response.content, "html.parser")
+        if middle_resp.status_code != 200 or not middle_resp.content:
+            raise Exception(f"中繼查詢回傳異常 (status={middle_resp.status_code})")
 
-        no_tag = middle_soup.find("input", {"name": "no"})
-        chk_tag = middle_soup.find("input", {"name": "chk"})
+        soup = BeautifulSoup(middle_resp.content, "html.parser")
+        no_tag = soup.find("input", {"name": "no"})
+        chk_tag = soup.find("input", {"name": "chk"})
         if not no_tag or not chk_tag:
-            raise Exception("無法從中繼回應取得 no/chk")
+            raise Exception("無法取得 no/chk（驗證碼錯誤或回傳非預期頁）")
 
-        no = no_tag.get("value", "")
-        chk = chk_tag.get("value", "")
+        response = self.session.post(
+            RESULT_URL,
+            data={"no": no_tag["value"], "chk": chk_tag["value"]},
+            timeout=10,
+        )
 
-        # 最終查詢
-        final_data = {"no": no, "chk": chk}
-        response = self.session.post(RESULT_URL, data=final_data, timeout=10)
         if response.status_code != 200:
-            raise Exception(f"查詢失敗 (status={response.status_code})")
+            raise Exception(f"最終查詢失敗 (status={response.status_code})")
 
         return {"html": response.text}
 
@@ -158,25 +214,22 @@ class HctTrackingInfoAdapter:
 
             time_text = time_tag.get_text(strip=True) if time_tag else ""
             state_text = state_span.get_text(strip=True) if state_span else ""
-            # 抓 onmouseover 屬性
             tooltip_attr = state_span.get("onmouseover") if state_span else ""
 
-            # 用 regex 把引號中的文字取出
             tooltip_match = re.search(r"'(.*?)'", tooltip_attr)
             tooltip_text = tooltip_match.group(1) if tooltip_match else ""
-
-            count_text = ""
-            if count_tag:
-                count_text = count_tag.get_text(separator="", strip=True).replace("件", "").strip()
-            office_text = office_tag.get_text(strip=True) if office_tag else ""
 
             if time_text:
                 records.append(
                     {
                         "作業時間": time_text,
-                        "貨物狀態": state_text + "\n" + tooltip_text,
-                        "貨物件數": count_text,
-                        "負責營業所": office_text,
+                        "貨物狀態": (state_text + "\n" + tooltip_text).strip(),
+                        "貨物件數": count_tag.get_text(strip=True).replace("件", "")
+                        if count_tag
+                        else "",
+                        "負責營業所": office_tag.get_text(strip=True)
+                        if office_tag
+                        else "",
                     }
                 )
 

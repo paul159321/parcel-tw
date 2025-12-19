@@ -44,7 +44,7 @@ class FamilyMartRequestHandler(RequestHandler):
         self.session.mount("https://", TLSAdapter())  # used to avoid SSLError
 
     def get_data(self, order_id: str) -> dict:
-        logging.info("[FamilyMart] Sending post request to the search page...")
+        #logging.info("[FamilyMart] Sending post request to the search page...")
 
         headers = {"Content-Type": "application/json; charset=UTF-8"}
         payload = {"EC_ORDER_NO": order_id, "ORDER_NO": order_id, "RCV_USER_NAME": None}
@@ -55,7 +55,7 @@ class FamilyMartRequestHandler(RequestHandler):
         return result
 
     def _parse_response(self, response):
-        logging.info("[FamilyMart] Parsing the response...")
+        #logging.info("[FamilyMart] Parsing the response...")
         s = response.replace("\\", "")
         json_data = json.loads(s[6:-2])
 

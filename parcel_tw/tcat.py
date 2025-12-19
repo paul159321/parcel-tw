@@ -21,7 +21,7 @@ class TcatTracker(Tracker):
             logging.error(f"[Tcat] {e}")
             return None
 
-        logging.info("[Tcat] Parsing the response...")
+        #logging.info("[Tcat] Parsing the response...")
         self.tracking_info = TcatTrackingInfoAdapter.convert(tracking_number, data)
 
         return self.tracking_info
@@ -88,6 +88,6 @@ class TcatTrackingInfoAdapter:
             platform=Platform.Tcat.value,
             status=latest["貨物狀態"],
             time=latest["作業時間"],
-            is_delivered="送達" in latest["貨物狀態"],
+            is_delivered="配達完成" in latest["貨物狀態"],
             raw_data=details,
         )

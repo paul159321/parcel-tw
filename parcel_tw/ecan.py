@@ -99,22 +99,19 @@ class EcanTrackingInfoAdapter:
             return None
 
         # ✅ 如果你確認網站是「由舊到新」排序，請改用下面排序後取最後一筆
-        # from datetime import datetime
-        # def parse_dt(s: str):
-        #     for fmt in ("%Y/%m/%d %H:%M", "%Y/%m/%d %H:%M:%S"):
-        #         try:
-        #             return datetime.strptime(s, fmt)
-        #         except ValueError:
-        #             pass
-        #     return None
-        # details_sorted = sorted(
-        #     details,
-        #     key=lambda x: (parse_dt(x["日期"]) is None, parse_dt(x["日期"]) or datetime.min),
-        # )
-        # latest = details_sorted[-1]
-
-        # 預設：網站通常最新在最上面
-        latest = details[0]
+        from datetime import datetime
+        def parse_dt(s: str):
+            for fmt in ("%Y/%m/%d %H:%M", "%Y/%m/%d %H:%M:%S"):
+                try:
+                    return datetime.strptime(s, fmt)
+                except ValueError:
+                    pass
+            return None
+        details_sorted = sorted(
+            details,
+            key=lambda x: (parse_dt(x["日期"]) is None, parse_dt(x["日期"]) or datetime.min),
+        )
+        latest = details_sorted[-1]
 
         # delivered 判斷：可能出現在「狀態」或「說明」
         delivered_text = f'{latest.get("狀態","")} {latest.get("說明","")}'

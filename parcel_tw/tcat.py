@@ -88,6 +88,6 @@ class TcatTrackingInfoAdapter:
             platform=Platform.Tcat.value,
             status=latest["貨物狀態"],
             time=latest["作業時間"],
-            is_delivered="配達完成" in latest["貨物狀態"],
+            is_delivered=any(k in latest.get("貨物狀態", "") for k in ("配達完成", "送達")),
             raw_data=details,
         )

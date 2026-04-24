@@ -10,3 +10,4 @@ class Platform(Enum):
     Tcat = "tcat"
     Ecan = "ecan"
     Ktj = "ktj"
+    Pst = "pst"

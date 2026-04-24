@@ -8,6 +8,7 @@ from .hct import HctTracker
 from .tcat import TcatTracker
 from .ecan import EcanTracker
 from .ktj import KtjTracker
+from .pst import PstTracker
 
 
 class TrackerFactory:
@@ -49,6 +50,8 @@ class TrackerFactory:
                 return EcanTracker()
             case Platform.Ktj:
                 return KtjTracker()
+            case Platform.Pst:
+                return PstTracker()
             case _:
                 raise ValueError(f"Invalid platform: {platform}")
 

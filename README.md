@@ -33,17 +33,43 @@ $ pip install parcel-tw
 
 ## Usage
 
+### Synchronous Usage
+
 ```python
-from parcel_tw import track, Platform
+from parcel_tw import track, Platform, ParcelTrackingError
 
 order_id = "order_id here"
-track(order_id, Platform.SevenEleven) # track 7-11 package
-track(order_id, Platform.FamilyMart) # track FamilyMart package
-track(order_id, Platform.OKMart) # track OK Mart package
-track(order_id, Platform.Shopee) # track Shopee package
+try:
+    result = track(order_id, Platform.SevenEleven) # track 7-11 package
+    if result:
+        print(f"Status: {result.status}")
+    else:
+        print("Parcel not found.")
+except ParcelTrackingError as e:
+    print(f"Error tracking parcel: {e}")
 ```
 
-`track()` will return a `TrackingInfo` object, which contains the status of the package.
+### Asynchronous Usage
+
+```python
+import asyncio
+from parcel_tw import track_async, Platform, ParcelTrackingError
+
+async def main():
+    order_id = "order_id here"
+    try:
+        result = await track_async(order_id, Platform.SevenEleven)
+        if result:
+            print(f"Status: {result.status}")
+        else:
+            print("Parcel not found.")
+    except ParcelTrackingError as e:
+        print(f"Error: {e}")
+
+asyncio.run(main())
+```
+
+`track()` / `track_async()` will return a `TrackingInfo` object, which contains the status of the package.
 
 ```python
 result = track(order_id, Platform.SevenEleven)
@@ -53,7 +79,7 @@ print(result.platform) # logistics platform
 print(result.status) # package status
 print(result.time) # update time
 print(result.is_delivered) # is delivered
-print(result.raw_data) # Package details after crawler analysis (dict)
+print(result.raw_data) # Package details after crawler analysis (dict/list)
 ```
 
 ## Roadmap
@@ -65,7 +91,7 @@ print(result.raw_data) # Package details after crawler analysis (dict)
 - [x] Shopee
 - [ ] Chunghwa Post
 - [x] Upload to PyPI
-- [ ] asyncio crawler
+- [x] asyncio crawler
 
 ## License
 

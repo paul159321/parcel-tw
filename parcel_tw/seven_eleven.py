@@ -1,14 +1,13 @@
 import io
-import logging
 import re
-from typing import Final
+from typing import Final, Any
 
 import ddddocr
-import requests
+import httpx
 from bs4 import BeautifulSoup, Tag
 from PIL import Image
 
-from .base import Tracker, TrackingInfo
+from .base import Tracker, TrackingInfo, RequestHandler, TrackingInfoAdapter, NetworkError, CaptchaError
 from .enums import Platform
 
 BASE_URL: Final = "https://eservice.7-11.com.tw/e-tracking/"
@@ -22,100 +21,90 @@ class SevenElevenTracker(Tracker):
     def track_status(self, order_id: str) -> TrackingInfo | None:
         if not self._validate_order_id(order_id):
             return None
-
-        try:
-            data = SevenElevenRequestHandler().get_data(order_id)
-        except Exception as e:
-            logging.error(f"[7-11] {e}")
-            return None
-
+        data = SevenElevenRequestHandler().get_data(order_id)
         self.tracking_info = SevenElevenTrackingInfoAdapter.convert(data)
+        return self.tracking_info
 
+    async def track_status_async(self, order_id: str) -> TrackingInfo | None:
+        if not self._validate_order_id(order_id):
+            return None
+        data = await SevenElevenRequestHandler().get_data_async(order_id)
+        self.tracking_info = SevenElevenTrackingInfoAdapter.convert(data)
         return self.tracking_info
 
     def _validate_order_id(self, order_id: str) -> bool:
         return len(order_id) == 8 or len(order_id) == 11 or len(order_id) == 12
 
 
-class SevenElevenRequestHandler:
+class SevenElevenRequestHandler(RequestHandler):
     def __init__(self, max_retry: int = 5):
-        """
-        Request handler for 7-11 e-tracking website
-
-        Parameters
-        ----------
-        max_retry : int
-            The maximum number of retries when the captcha is incorrect
-        """
-
-        self.session = requests.Session()
         self.max_retry = max_retry
+        self.ocr = ddddocr.DdddOcr(show_ad=False)
 
-    def get_data(self, order_id) -> dict | None:
-        """
-        Get the tracking information froms 7-11 e-tracking website
-
-        Parameters
-        ----------
-        order_id : str
-            The order_id of the parcel
-
-        Returns
-        -------
-        dict | None
-            The tracking information of the parcel in `dict`, or `None` if failed
-        """
-
+    def get_data(self, order_id: str) -> dict | None:
         retry_counter = 0
-        while retry_counter < self.max_retry:
-            try:
-                #logging.info(f"[7-11] Requesting tracking info for order {order_id}...")
-                response = self._post_search(order_id)
-                result = SevenElevenResponseParser(response.text).parse()
-                if result["msg"] == "驗證碼錯誤!!":
+        with httpx.Client(timeout=15) as client:
+            while retry_counter < self.max_retry:
+                try:
+                    response = self._post_search(client, order_id)
+                    result = SevenElevenResponseParser(response.text).parse()
+                    if result["msg"] == "驗證碼錯誤!!":
+                        retry_counter += 1
+                        continue
+                    return result
+                except Exception as e:
+                    if retry_counter >= self.max_retry - 1:
+                        raise NetworkError(f"7-11 request failed after retries: {e}")
                     retry_counter += 1
-                    raise ValueError("Incorrect captcha")
-                return result
-            except ValueError:
-                logging.warning(
-                    f"[7-11] Captcha is incorrect, retrying... ({retry_counter}/{self.max_retry})"
-                )
 
-        return None
+        raise CaptchaError("Incorrect captcha after max retries")
 
-    def _post_search(self, order_id: str) -> requests.Response:
-        """
-        Post the search request to the 7-11 e-tracking website
+    async def get_data_async(self, order_id: str) -> dict | None:
+        retry_counter = 0
+        async with httpx.AsyncClient(timeout=15) as client:
+            while retry_counter < self.max_retry:
+                try:
+                    response = await self._post_search_async(client, order_id)
+                    result = SevenElevenResponseParser(response.text).parse()
+                    if result["msg"] == "驗證碼錯誤!!":
+                        retry_counter += 1
+                        continue
+                    return result
+                except Exception as e:
+                    if retry_counter >= self.max_retry - 1:
+                        raise NetworkError(f"7-11 async request failed after retries: {e}")
+                    retry_counter += 1
 
-        Parameters
-        ----------
-        order_id : str
-            The order_id of the parcel
+        raise CaptchaError("Incorrect captcha after max retries")
 
-        Returns
-        -------
-        requests.Response
-            The response of the search request
-        """
-
-        response = self.session.get(SEARCH_URL)
+    def _post_search(self, client: httpx.Client, order_id: str) -> httpx.Response:
+        response = client.get(SEARCH_URL)
         if response.status_code != 200:
-            raise Exception("Failed to get search page")
+            raise NetworkError("Failed to get search page")
 
-        payload = self._construct_payload(response, order_id)
-        response = self.session.post(SEARCH_URL, data=payload)
+        payload = self._construct_payload(client, response, order_id)
+        response = client.post(SEARCH_URL, data=payload)
         if response.status_code != 200:
-            raise Exception("Failed to post search request")
+            raise NetworkError("Failed to post search request")
         return response
 
-    def _construct_payload(self, response: requests.Response, order_id) -> dict:
+    async def _post_search_async(self, client: httpx.AsyncClient, order_id: str) -> httpx.Response:
+        response = await client.get(SEARCH_URL)
+        if response.status_code != 200:
+            raise NetworkError("Failed to get search page")
+
+        payload = await self._construct_payload_async(client, response, order_id)
+        response = await client.post(SEARCH_URL, data=payload)
+        if response.status_code != 200:
+            raise NetworkError("Failed to post search request")
+        return response
+
+    def _construct_payload(self, client: httpx.Client, response: httpx.Response, order_id: str) -> dict:
         soup = BeautifulSoup(response.text, "html.parser")
         view_state = self._find_value_by_id(soup, "__VIEWSTATE")
         view_state_generator = self._find_value_by_id(soup, "__VIEWSTATEGENERATOR")
-        validate_code = SevenElevenCaptchaSolver(
-            self.session, response.text
-        ).get_validate_code()
-        payload = {
+        validate_code = self._get_validate_code(client, response.text)
+        return {
             "__EVENTTARGET": "submit",
             "__EVENTARGUMENT": "",
             "__VIEWSTATE": view_state,
@@ -125,7 +114,50 @@ class SevenElevenRequestHandler:
             "txtIMGName": "",
             "txtPage": 1,
         }
-        return payload
+
+    async def _construct_payload_async(self, client: httpx.AsyncClient, response: httpx.Response, order_id: str) -> dict:
+        soup = BeautifulSoup(response.text, "html.parser")
+        view_state = self._find_value_by_id(soup, "__VIEWSTATE")
+        view_state_generator = self._find_value_by_id(soup, "__VIEWSTATEGENERATOR")
+        validate_code = await self._get_validate_code_async(client, response.text)
+        return {
+            "__EVENTTARGET": "submit",
+            "__EVENTARGUMENT": "",
+            "__VIEWSTATE": view_state,
+            "__VIEWSTATEGENERATOR": view_state_generator,
+            "txtProductNum": order_id,
+            "tbChkCode": validate_code,
+            "txtIMGName": "",
+            "txtPage": 1,
+        }
+
+    def _get_validate_code(self, client: httpx.Client, html: str) -> str:
+        validate_image = self._get_validate_image(client, html)
+        return self.ocr.classification(validate_image)
+
+    async def _get_validate_code_async(self, client: httpx.AsyncClient, html: str) -> str:
+        validate_image = await self._get_validate_image_async(client, html)
+        return self.ocr.classification(validate_image)
+
+    def _get_validate_image(self, client: httpx.Client, html: str) -> Image.Image:
+        url_suffix = re.search(r'src="(ValidateImage\.aspx\?ts=[0-9]+)"', html)
+        if url_suffix is None:
+            raise CaptchaError("Failed to get validate image url")
+        img_url = BASE_URL + url_suffix.group(1)
+        response = client.get(img_url)
+        if response.status_code != 200:
+            raise NetworkError("Failed to get validate image")
+        return Image.open(io.BytesIO(response.content))
+
+    async def _get_validate_image_async(self, client: httpx.AsyncClient, html: str) -> Image.Image:
+        url_suffix = re.search(r'src="(ValidateImage\.aspx\?ts=[0-9]+)"', html)
+        if url_suffix is None:
+            raise CaptchaError("Failed to get validate image url")
+        img_url = BASE_URL + url_suffix.group(1)
+        response = await client.get(img_url)
+        if response.status_code != 200:
+            raise NetworkError("Failed to get validate image")
+        return Image.open(io.BytesIO(response.content))
 
     def _find_value_by_id(self, soup: BeautifulSoup, id: str) -> str | None:
         tag = soup.find("input", id=id)
@@ -136,63 +168,8 @@ class SevenElevenRequestHandler:
         return None
 
 
-class SevenElevenCaptchaSolver:
-    def __init__(self, session: requests.Session, html: str):
-        """
-        Captcha solver for 7-11 e-tracking website
-
-        Paramaters
-        ----------
-        session : requests.Session
-            The session object for sending requests
-        html : str
-            The html content of the search page
-        """
-
-        self.session = session
-        self.html = html
-
-    def get_validate_code(self) -> str:
-        """
-        Get the validate code from the captcha image
-
-        Returns
-        -------
-        str
-            The validate code
-        """
-
-        validate_image = self._get_validate_image()
-        ocr = ddddocr.DdddOcr(show_ad=False)
-        validate_code = ocr.classification(validate_image)
-        return validate_code
-
-    def _get_validate_image(self) -> Image.Image:
-        validate_image_url = self._get_validate_image_url()
-        response = self.session.get(validate_image_url)
-        if response.status_code != 200:
-            raise Exception("Failed to get validate image")
-        return Image.open(io.BytesIO(response.content))
-
-    def _get_validate_image_url(self) -> str:
-        url_suffix = re.search(r'src="(ValidateImage\.aspx\?ts=[0-9]+)"', self.html)
-        if url_suffix is not None:
-            return BASE_URL + url_suffix.group(1)
-        else:
-            raise Exception("Failed to get validate image url")
-
-
 class SevenElevenResponseParser:
     def __init__(self, html: str):
-        """
-        Parser for 7-11 e-tracking response
-
-        Parameters
-        ----------
-        html : str
-            The html content of the response
-        """
-
         self.soup = BeautifulSoup(html, "html.parser")
         self.result = {
             "msg": None,
@@ -201,16 +178,6 @@ class SevenElevenResponseParser:
         }
 
     def parse(self) -> dict:
-        """
-        Parse the response and extract the information
-
-        Returns
-        -------
-        dict
-            The extracted information
-        """
-
-        # Check if there is any alert message in the script tag
         script_tags = self.soup.find_all("script")
         for tag in script_tags:
             text = tag.get_text()
@@ -218,7 +185,6 @@ class SevenElevenResponseParser:
                 self.result["msg"] = self._extract_alert_message(text)
                 return self.result
 
-        # Check if there is any error message
         error_message = self.soup.find("span", id="lbMsg")
         if error_message is not None:
             self.result["msg"] = error_message.get_text()
@@ -264,45 +230,29 @@ class SevenElevenResponseParser:
         return res
 
 
-class SevenElevenTrackingInfoAdapter:
+class SevenElevenTrackingInfoAdapter(TrackingInfoAdapter):
     @staticmethod
-    def convert(raw_data: dict | None) -> TrackingInfo | None:
-        """
-        Convert the raw data to `TrackingInfo` object
-
-        Parameters
-        ----------
-        raw_data : dict | None
-            The raw data from the 7-11 e-tracking website
-
-        Returns
-        -------
-        TrackingInfo | None
-            A `TrackingInfo` object with the status details of the parcel,
-            or `None` if no information is available.
-        """
-
-        if raw_data is None or raw_data["result"]["info"] is None:
+    def convert(raw_data: Any, order_id: str | None = None) -> TrackingInfo | None:
+        if raw_data is None or raw_data.get("result") is None or raw_data["result"].get("info") is None:
             return None
 
-        order_id = raw_data["result"]["info"]["query_no"]
+        oid = raw_data["result"]["info"]["query_no"]
 
-        # Extract status and time from m_news
         pattern = r"(.*)(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})"
         match_obj = re.match(pattern, raw_data["m_news"])
         if match_obj is not None:
             status = match_obj.group(1)
-            time = match_obj.group(2)
+            time_val = match_obj.group(2)
         else:
             return None
 
         is_delivered = "包裹配達取件門市" in status or "已完成包裹成功取件" in status
 
         return TrackingInfo(
-            order_id=order_id,
+            order_id=oid,
             platform=Platform.SevenEleven.value,
             status=status,
-            time=time,
+            time=time_val,
             is_delivered=is_delivered,
             raw_data=raw_data,
         )

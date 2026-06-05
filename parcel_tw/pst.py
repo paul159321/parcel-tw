@@ -1,9 +1,9 @@
 import logging
-from typing import Final
+from typing import Final, Any
 
-import requests
+import httpx
 
-from .base import Tracker, TrackingInfo
+from .base import Tracker, TrackingInfo, RequestHandler, TrackingInfoAdapter, NetworkError
 from .enums import Platform
 
 BASE_URL: Final = "https://postserv.post.gov.tw/pstmail/EsoafDispatcher"
@@ -14,25 +14,39 @@ class PstTracker(Tracker):
         self.tracking_info = None
 
     def track_status(self, tracking_number: str) -> TrackingInfo | None:
-        try:
-            data = PstRequestHandler().get_data(tracking_number)
-        except Exception as e:
-            logging.error(f"[Pstmail] {e}")
-            return None
+        data = PstRequestHandler().get_data(tracking_number)
+        self.tracking_info = PstTrackingInfoAdapter.convert(data, tracking_number)
+        return self.tracking_info
 
-        self.tracking_info = PstTrackingInfoAdapter.convert(
-            tracking_number, data
-        )
-
+    async def track_status_async(self, tracking_number: str) -> TrackingInfo | None:
+        data = await PstRequestHandler().get_data_async(tracking_number)
+        self.tracking_info = PstTrackingInfoAdapter.convert(data, tracking_number)
         return self.tracking_info
 
 
-class PstRequestHandler:
-    def __init__(self):
-        self.session = requests.Session()
+class PstRequestHandler(RequestHandler):
+    def get_data(self, order_id: str) -> dict:
+        payload = self._construct_payload(order_id)
+        try:
+            with httpx.Client(timeout=15) as client:
+                resp = client.post(BASE_URL, json=payload)
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as e:
+            raise NetworkError(f"Pstmail request failed: {e}")
 
-    def get_data(self, tracking_number: str) -> dict:
-        payload = {
+    async def get_data_async(self, order_id: str) -> dict:
+        payload = self._construct_payload(order_id)
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(BASE_URL, json=payload)
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as e:
+            raise NetworkError(f"Pstmail async request failed: {e}")
+
+    def _construct_payload(self, order_id: str) -> dict:
+        return {
             "header": {
                 "InputVOClass": "com.systex.jbranch.app.server.post.vo.EB500100InputVO",
                 "TxnCode": "EB500100",
@@ -48,30 +62,17 @@ class PstRequestHandler:
                 "SectionID": "esoaf",
             },
             "body": {
-                "MAILNO": tracking_number,
+                "MAILNO": order_id,
                 "pageCount": 10,
             },
         }
 
-        try:
-            resp = self.session.post(
-                BASE_URL,
-                json=payload,
-                timeout=15,
-            )
-            resp.raise_for_status()
-        except Exception as e:
-            raise Exception(f"請求失敗: {e}")
 
-        return resp.json()
-
-
-class PstTrackingInfoAdapter:
+class PstTrackingInfoAdapter(TrackingInfoAdapter):
     @staticmethod
-    def convert(
-        tracking_number: str,
-        raw_data: list,
-    ) -> TrackingInfo | None:
+    def convert(raw_data: Any, order_id: str | None = None) -> TrackingInfo | None:
+        if not raw_data or not isinstance(raw_data, list) or len(raw_data) == 0:
+            return None
         try:
             items = raw_data[0]["body"]["host_rs"]["ITEM"]
         except Exception:
@@ -81,7 +82,6 @@ class PstTrackingInfoAdapter:
             return None
 
         details = []
-
         for item in items:
             status = item.get("STATUS", "").strip()
             station = item.get("BRHNC", "").strip()
@@ -101,7 +101,7 @@ class PstTrackingInfoAdapter:
         latest = details[0]
 
         return TrackingInfo(
-            order_id=tracking_number,
+            order_id=order_id or "",
             platform=Platform.Pst.value,
             status=latest["貨物狀態"],
             time=latest["作業時間"],

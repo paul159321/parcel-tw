@@ -56,7 +56,7 @@ class TrackerFactory:
                 raise ValueError(f"Invalid platform: {platform}")
 
 
-def track(platform: Platform, order_id: str) -> TrackingInfo | None:
+def track(order_id: str, platform: Platform) -> TrackingInfo | None:
     """
     Track the parcel status by order_id
 
@@ -64,6 +64,8 @@ def track(platform: Platform, order_id: str) -> TrackingInfo | None:
     ----------
     order_id : str
         The order_id of the parcel
+    platform : Platform
+        The platform of the parcel
 
     Returns
     -------
@@ -74,3 +76,25 @@ def track(platform: Platform, order_id: str) -> TrackingInfo | None:
 
     tracker = TrackerFactory.create_tracker(platform)
     return tracker.track_status(order_id)
+
+
+async def track_async(order_id: str, platform: Platform) -> TrackingInfo | None:
+    """
+    Track the parcel status by order_id asynchronously
+
+    Parameters
+    ----------
+    order_id : str
+        The order_id of the parcel
+    platform : Platform
+        The platform of the parcel
+
+    Returns
+    -------
+    TrackingInfo | None
+        A `TrackingInfo` object with the status details of the parcel,
+        or `None` if no information is available.
+    """
+
+    tracker = TrackerFactory.create_tracker(platform)
+    return await tracker.track_status_async(order_id)

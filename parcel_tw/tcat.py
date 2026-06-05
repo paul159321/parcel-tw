@@ -1,10 +1,10 @@
 import logging
-from typing import Final
+from typing import Final, Any
 
-import requests
+import httpx
 from bs4 import BeautifulSoup
 
-from .base import Tracker, TrackingInfo
+from .base import Tracker, TrackingInfo, RequestHandler, TrackingInfoAdapter, NetworkError
 from .enums import Platform
 
 BASE_URL: Final = "https://www.t-cat.com.tw/Inquire/TraceDetail.aspx?BillID={waybill}"
@@ -15,36 +15,43 @@ class TcatTracker(Tracker):
         self.tracking_info = None
 
     def track_status(self, tracking_number: str) -> TrackingInfo | None:
-        try:
-            data = TcatRequestHandler().get_data(tracking_number)
-        except Exception as e:
-            logging.error(f"[Tcat] {e}")
-            return None
+        data = TcatRequestHandler().get_data(tracking_number)
+        self.tracking_info = TcatTrackingInfoAdapter.convert(data, tracking_number)
+        return self.tracking_info
 
-        #logging.info("[Tcat] Parsing the response...")
-        self.tracking_info = TcatTrackingInfoAdapter.convert(tracking_number, data)
-
+    async def track_status_async(self, tracking_number: str) -> TrackingInfo | None:
+        data = await TcatRequestHandler().get_data_async(tracking_number)
+        self.tracking_info = TcatTrackingInfoAdapter.convert(data, tracking_number)
         return self.tracking_info
 
 
-class TcatRequestHandler:
-    def __init__(self):
-        self.session = requests.Session()
-
-    def get_data(self, tracking_number: str) -> dict:
-        url = BASE_URL.format(waybill=tracking_number)
+class TcatRequestHandler(RequestHandler):
+    def get_data(self, order_id: str) -> dict:
+        url = BASE_URL.format(waybill=order_id)
         try:
-            resp = self.session.get(url, timeout=15)
-            resp.raise_for_status()
+            with httpx.Client(timeout=15) as client:
+                resp = client.get(url)
+                resp.raise_for_status()
+                return {"html": resp.text}
         except Exception as e:
-            raise Exception(f"請求失敗: {e}")
+            raise NetworkError(f"Tcat request failed: {e}")
 
-        return {"html": resp.text}
+    async def get_data_async(self, order_id: str) -> dict:
+        url = BASE_URL.format(waybill=order_id)
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(url)
+                resp.raise_for_status()
+                return {"html": resp.text}
+        except Exception as e:
+            raise NetworkError(f"Tcat async request failed: {e}")
 
 
-class TcatTrackingInfoAdapter:
+class TcatTrackingInfoAdapter(TrackingInfoAdapter):
     @staticmethod
-    def convert(tracking_number: str, raw_data: dict) -> TrackingInfo | None:
+    def convert(raw_data: Any, order_id: str | None = None) -> TrackingInfo | None:
+        if not raw_data or "html" not in raw_data:
+            return None
         soup = BeautifulSoup(raw_data["html"], "html.parser")
         table = soup.select_one(".tablelist")
         if not table:
@@ -84,7 +91,7 @@ class TcatTrackingInfoAdapter:
 
         latest = details[0]
         return TrackingInfo(
-            order_id=waybill or tracking_number,
+            order_id=waybill or order_id or "",
             platform=Platform.Tcat.value,
             status=latest["貨物狀態"],
             time=latest["作業時間"],

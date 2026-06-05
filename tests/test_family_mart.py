@@ -1,9 +1,10 @@
+import asyncio
 import logging
 import os
 
 from dotenv import load_dotenv
 
-from parcel_tw import Platform, track
+from parcel_tw import Platform, track, track_async
 
 load_dotenv()
 FAMILY_MART_ORDER_ID = os.getenv("FAMILY_MART_ORDER_ID")
@@ -17,6 +18,13 @@ def test_family_mart():
     result = track(FAMILY_MART_ORDER_ID, Platform.FamilyMart)
     assert result is not None
     logging.info(f"{RED}{result.order_id}{DEFAULT} - {result.status}")
+
+def test_family_mart_async():
+    assert FAMILY_MART_ORDER_ID is not None
+
+    result = asyncio.run(track_async(FAMILY_MART_ORDER_ID, Platform.FamilyMart))
+    assert result is not None
+    logging.info(f"Async: {RED}{result.order_id}{DEFAULT} - {result.status}")
 
 def test_family_mart_invalid_order_id():
     result = track("1234567890", Platform.FamilyMart)

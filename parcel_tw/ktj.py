@@ -17,11 +17,17 @@ class KtjTracker(Tracker):
         self.tracking_info = None
 
     def track_status(self, order_id: str) -> TrackingInfo | None:
+        order_id = self.normalize_order_id(order_id)
+        if order_id is None:
+            return None
         raw = KtjRequestHandler().get_data(order_id)
         self.tracking_info = KtjTrackingInfoAdapter.convert(raw, order_id)
         return self.tracking_info
 
     async def track_status_async(self, order_id: str) -> TrackingInfo | None:
+        order_id = self.normalize_order_id(order_id)
+        if order_id is None:
+            return None
         raw = await KtjRequestHandler().get_data_async(order_id)
         self.tracking_info = KtjTrackingInfoAdapter.convert(raw, order_id)
         return self.tracking_info

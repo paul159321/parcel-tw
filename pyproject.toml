@@ -21,6 +21,12 @@ classifiers = [
 ]
 dynamic = ["dependencies"]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "python-dotenv",
+]
+
 [project.urls]
 "Homepage" = "https://github.com/ryanycs/parcel_tw"
 "Issues" = "https://github.com/ryanycs/parcel_tw/issues"
@@ -32,3 +38,6 @@ files = ["requirements.txt"]
 pythonpath = ["."]
 log_cli = true
 log_cli_level = "INFO"
+markers = [
+    "live: tests that call external carrier services and require real tracking IDs",
+]

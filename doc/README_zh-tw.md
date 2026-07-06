@@ -10,90 +10,134 @@
     <a href="../README.md">English</a> <b>繁體中文</b>
 </p>
 
+## 關於
 
-## About
+`parcel_tw` 是用來查詢台灣物流狀態的 Python 套件，提供同步與非同步兩種一致的查詢介面。
 
-parcel_tw 是一個查詢台灣包裹進度的 Python package，支援多家的物流系統(7-11、全家、OK、蝦皮店到店)。
+## 支援平台
 
-## Installation
+| Platform enum | 物流平台 |
+| --- | --- |
+| `Platform.SevenEleven` | 7-11 e-tracking |
+| `Platform.FamilyMart` | 全家 |
+| `Platform.HiLife` | 萊爾富，透過 ezShip 查詢 |
+| `Platform.OKMart` | OK Mart |
+| `Platform.Shopee` | 蝦皮店到店 / Shopee Xpress |
+| `Platform.Hct` | 新竹物流 |
+| `Platform.Tcat` | 黑貓宅急便 |
+| `Platform.Ecan` | 宅配通 |
+| `Platform.Ktj` | 嘉里大榮 |
+| `Platform.Pst` | 中華郵政 |
+| `Platform.EzShip` | ezShip 台灣便利配 |
 
-### Requirements
+## 安裝
+
+### 需求
 
 - Python 3.10+
-- tesseract-ocr
+- 可連線到目標物流商查詢系統
 
-因為 7-11 的 E-Tracking 貨態查詢系統無法繞過 Captcha 檢測，所以需要使用 OCR 來解析驗證碼。
+7-11 與新竹物流查詢流程需要驗證碼辨識；目前實作使用 Python 套件 `ddddocr`。
 
-```sudo apt install tesseract-ocr```
-
-### Install via pip
+### 透過 pip 安裝
 
 ```bash
-$ pip install parcel-tw
+pip install parcel-tw
 ```
 
-## Usage
+### 本機開發安裝
 
-### 同步使用方式
+```bash
+pip install -e ".[test]"
+```
+
+## 使用方式
+
+### 同步查詢
 
 ```python
-from parcel_tw import track, Platform, ParcelTrackingError
+from parcel_tw import Platform, ParcelTrackingError, track
 
 order_id = "order_id here"
+
 try:
-    result = track(order_id, Platform.SevenEleven) # 查詢 7-11 包裹
+    result = track(order_id, Platform.SevenEleven)
     if result:
-        print(f"包裹狀態: {result.status}")
+        print(f"狀態: {result.status}")
     else:
-        print("查無此包裹。")
+        print("查無包裹資料")
 except ParcelTrackingError as e:
     print(f"查詢失敗: {e}")
 ```
 
-### 非同步使用方式
+### 非同步查詢
 
 ```python
 import asyncio
-from parcel_tw import track_async, Platform, ParcelTrackingError
+
+from parcel_tw import Platform, ParcelTrackingError, track_async
+
 
 async def main():
     order_id = "order_id here"
+
     try:
         result = await track_async(order_id, Platform.SevenEleven)
         if result:
-            print(f"包裹狀態: {result.status}")
+            print(f"狀態: {result.status}")
         else:
-            print("查無此包裹。")
+            print("查無包裹資料")
     except ParcelTrackingError as e:
         print(f"查詢失敗: {e}")
+
 
 asyncio.run(main())
 ```
 
-`track()` / `track_async()` 會回傳一個 `TrackingInfo` 物件，可以取得包裹的狀態。
+`track()` 與 `track_async()` 查到資料時會回傳 `TrackingInfo`。
 
 ```python
 result = track(order_id, Platform.SevenEleven)
 
-print(result.order_id) # 取貨編號
-print(result.platform) # 物流平台
-print(result.status) # 包裹狀態
-print(result.time) # 更新時間
-print(result.is_delivered) # 是否已送達
-print(result.raw_data) # 爬蟲分析後的包裹詳細資料 (dict/list)
+print(result.order_id)       # 單號
+print(result.platform)       # 物流平台
+print(result.status)         # 包裹狀態
+print(result.time)           # 更新時間
+print(result.is_delivered)   # 是否已送達
+print(result.raw_data)       # 解析後的物流原始資料
 ```
 
-## Roadmap
+空白、含空白或特殊符號等明顯無效的單號會在本地直接回傳 `None`，不會送出外部查詢。物流商回覆查無資料時也會轉成 `None`。
 
-- [x] 7-11
-- [x] 全家
-- [ ] 萊爾富
-- [x] OK Mart
-- [x] 蝦皮店到店
-- [ ] 中華郵政
-- [x] 上架到 PyPI
-- [x] asyncio 異步爬蟲
+## 測試
 
-## License
+一般單元測試不需要連線：
+
+```bash
+pytest
+```
+
+Live integration tests 會呼叫真實物流商服務，需在 `.env` 放入測試單號：
+
+```env
+SEVEN_ELEVEN_ORDER_ID=
+OKMART_ORDER_ID=
+FAMILY_MART_ORDER_ID=
+SHOPEE_ORDER_ID=
+HILIFE_ORDER_ID=
+EZSHIP_ORDER_ID=
+```
+
+明確執行 live 測試：
+
+```bash
+pytest -m live --run-live
+```
+
+## 發版提醒
+
+`dist/` 已被 `.gitignore` 排除。建立新版發行包前，請先清空 `dist/` 裡的舊 wheel 和 source archive，再從目前原始碼重新 build，避免誤上傳舊版檔案。
+
+## 授權
 
 Distributed under the MIT License. See `LICENSE` for more information.

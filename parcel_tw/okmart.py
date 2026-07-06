@@ -17,11 +17,17 @@ class OKMartTracker(Tracker):
         self.tracking_info = None
 
     def track_status(self, order_id: str) -> TrackingInfo | None:
+        order_id = self.normalize_order_id(order_id)
+        if order_id is None:
+            return None
         data = OKMartRequestHandler().get_data(order_id)
         self.tracking_info = OKMartTrackingInfoAdapter.convert(data)
         return self.tracking_info
 
     async def track_status_async(self, order_id: str) -> TrackingInfo | None:
+        order_id = self.normalize_order_id(order_id)
+        if order_id is None:
+            return None
         data = await OKMartRequestHandler().get_data_async(order_id)
         self.tracking_info = OKMartTrackingInfoAdapter.convert(data)
         return self.tracking_info

@@ -22,11 +22,17 @@ class HctTracker(Tracker):
         self.tracking_info = None
 
     def track_status(self, tracking_number: str) -> TrackingInfo | None:
+        tracking_number = self.normalize_order_id(tracking_number)
+        if tracking_number is None:
+            return None
         data = HctRequestHandler(reuse_session=False).get_data(tracking_number)
         self.tracking_info = HctTrackingInfoAdapter.convert(data, tracking_number)
         return self.tracking_info
 
     async def track_status_async(self, tracking_number: str) -> TrackingInfo | None:
+        tracking_number = self.normalize_order_id(tracking_number)
+        if tracking_number is None:
+            return None
         data = await HctRequestHandler(reuse_session=False).get_data_async(tracking_number)
         self.tracking_info = HctTrackingInfoAdapter.convert(data, tracking_number)
         return self.tracking_info

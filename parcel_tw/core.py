@@ -9,6 +9,7 @@ from .tcat import TcatTracker
 from .ecan import EcanTracker
 from .ktj import KtjTracker
 from .pst import PstTracker
+from .ezship import EzShipTracker, HiLifeTracker
 
 
 class TrackerFactory:
@@ -38,6 +39,8 @@ class TrackerFactory:
                 return SevenElevenTracker()
             case Platform.FamilyMart:
                 return FamilyMartTracker()
+            case Platform.HiLife:
+                return HiLifeTracker()
             case Platform.OKMart:
                 return OKMartTracker()
             case Platform.Shopee:
@@ -52,6 +55,8 @@ class TrackerFactory:
                 return KtjTracker()
             case Platform.Pst:
                 return PstTracker()
+            case Platform.EzShip:
+                return EzShipTracker()
             case _:
                 raise ValueError(f"Invalid platform: {platform}")
 
@@ -75,7 +80,10 @@ def track(order_id: str, platform: Platform) -> TrackingInfo | None:
     """
 
     tracker = TrackerFactory.create_tracker(platform)
-    return tracker.track_status(order_id)
+    normalized_order_id = tracker.normalize_order_id(order_id)
+    if normalized_order_id is None:
+        return None
+    return tracker.track_status(normalized_order_id)
 
 
 async def track_async(order_id: str, platform: Platform) -> TrackingInfo | None:
@@ -97,4 +105,7 @@ async def track_async(order_id: str, platform: Platform) -> TrackingInfo | None:
     """
 
     tracker = TrackerFactory.create_tracker(platform)
-    return await tracker.track_status_async(order_id)
+    normalized_order_id = tracker.normalize_order_id(order_id)
+    if normalized_order_id is None:
+        return None
+    return await tracker.track_status_async(normalized_order_id)

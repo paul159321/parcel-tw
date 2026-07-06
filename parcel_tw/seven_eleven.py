@@ -19,21 +19,26 @@ class SevenElevenTracker(Tracker):
         self.tracking_info = None
 
     def track_status(self, order_id: str) -> TrackingInfo | None:
-        if not self._validate_order_id(order_id):
+        order_id = self.normalize_order_id(order_id)
+        if order_id is None:
             return None
         data = SevenElevenRequestHandler().get_data(order_id)
         self.tracking_info = SevenElevenTrackingInfoAdapter.convert(data)
         return self.tracking_info
 
     async def track_status_async(self, order_id: str) -> TrackingInfo | None:
-        if not self._validate_order_id(order_id):
+        order_id = self.normalize_order_id(order_id)
+        if order_id is None:
             return None
         data = await SevenElevenRequestHandler().get_data_async(order_id)
         self.tracking_info = SevenElevenTrackingInfoAdapter.convert(data)
         return self.tracking_info
 
-    def _validate_order_id(self, order_id: str) -> bool:
-        return len(order_id) == 8 or len(order_id) == 11 or len(order_id) == 12
+    def normalize_order_id(self, order_id: str) -> str | None:
+        value = super().normalize_order_id(order_id)
+        if value is None or len(value) not in {8, 11, 12}:
+            return None
+        return value
 
 
 class SevenElevenRequestHandler(RequestHandler):

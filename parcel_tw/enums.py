@@ -4,6 +4,7 @@ from enum import Enum
 class Platform(Enum):
     SevenEleven = "seven_eleven"
     FamilyMart = "family_mart"
+    HiLife = "hi_life"
     OKMart = "ok_mart"
     Shopee = "shopee"
     Hct = "hct"
@@ -11,3 +12,4 @@ class Platform(Enum):
     Ecan = "ecan"
     Ktj = "ktj"
     Pst = "pst"
+    EzShip = "ezship"

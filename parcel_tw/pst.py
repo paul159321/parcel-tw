@@ -14,11 +14,17 @@ class PstTracker(Tracker):
         self.tracking_info = None
 
     def track_status(self, tracking_number: str) -> TrackingInfo | None:
+        tracking_number = self.normalize_order_id(tracking_number)
+        if tracking_number is None:
+            return None
         data = PstRequestHandler().get_data(tracking_number)
         self.tracking_info = PstTrackingInfoAdapter.convert(data, tracking_number)
         return self.tracking_info
 
     async def track_status_async(self, tracking_number: str) -> TrackingInfo | None:
+        tracking_number = self.normalize_order_id(tracking_number)
+        if tracking_number is None:
+            return None
         data = await PstRequestHandler().get_data_async(tracking_number)
         self.tracking_info = PstTrackingInfoAdapter.convert(data, tracking_number)
         return self.tracking_info

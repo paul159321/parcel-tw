@@ -7,28 +7,48 @@
 
 <p align="center">
     <img src="https://img.shields.io/github/license/ryanycs/parcel-tw" alt=""><br>
-    <b>English</b> <a href="doc/README_zh-tw.md">繁體中文</a>
+    <b>English</b> <a href="doc/README_zh-tw.md">Traditional Chinese</a>
 </p>
 
 ## About
 
-parcel_tw is a Python package for tracking the status of packages in Taiwan. It supports many logistics systems (7-11, FamilyMart, OK, and Shopee).
+`parcel_tw` is a Python package for tracking parcel status in Taiwan. It provides a common synchronous and asynchronous interface for multiple carrier systems.
+
+## Supported Platforms
+
+| Platform enum | Carrier |
+| --- | --- |
+| `Platform.SevenEleven` | 7-11 e-tracking |
+| `Platform.FamilyMart` | FamilyMart |
+| `Platform.HiLife` | Hi-Life via ezShip tracking |
+| `Platform.OKMart` | OK Mart |
+| `Platform.Shopee` | Shopee Xpress |
+| `Platform.Hct` | HCT Logistics |
+| `Platform.Tcat` | T-Cat |
+| `Platform.Ecan` | Ecan |
+| `Platform.Ktj` | KTJ Express |
+| `Platform.Pst` | Chunghwa Post |
+| `Platform.EzShip` | ezShip |
 
 ## Installation
 
 ### Requirements
 
 - Python 3.10+
-- tesseract-ocr
+- Internet access to the target carrier tracking systems
 
-Since the E-tracking system of 7-11 cannot bypass the Captcha detection, OCR is needed to parse the verification code.
-
-```sudo apt install tesseract-ocr```
+7-11 and HCT require captcha recognition. The current implementation uses `ddddocr`, which is installed as a Python dependency.
 
 ### Install via pip
 
 ```bash
-$ pip install parcel-tw
+pip install parcel-tw
+```
+
+### Install for local development
+
+```bash
+pip install -e ".[test]"
 ```
 
 ## Usage
@@ -36,11 +56,12 @@ $ pip install parcel-tw
 ### Synchronous Usage
 
 ```python
-from parcel_tw import track, Platform, ParcelTrackingError
+from parcel_tw import Platform, ParcelTrackingError, track
 
 order_id = "order_id here"
+
 try:
-    result = track(order_id, Platform.SevenEleven) # track 7-11 package
+    result = track(order_id, Platform.SevenEleven)
     if result:
         print(f"Status: {result.status}")
     else:
@@ -53,10 +74,13 @@ except ParcelTrackingError as e:
 
 ```python
 import asyncio
-from parcel_tw import track_async, Platform, ParcelTrackingError
+
+from parcel_tw import Platform, ParcelTrackingError, track_async
+
 
 async def main():
     order_id = "order_id here"
+
     try:
         result = await track_async(order_id, Platform.SevenEleven)
         if result:
@@ -66,32 +90,53 @@ async def main():
     except ParcelTrackingError as e:
         print(f"Error: {e}")
 
+
 asyncio.run(main())
 ```
 
-`track()` / `track_async()` will return a `TrackingInfo` object, which contains the status of the package.
+`track()` and `track_async()` return a `TrackingInfo` object when tracking data is available.
 
 ```python
 result = track(order_id, Platform.SevenEleven)
 
-print(result.order_id) # order id
-print(result.platform) # logistics platform
-print(result.status) # package status
-print(result.time) # update time
-print(result.is_delivered) # is delivered
-print(result.raw_data) # Package details after crawler analysis (dict/list)
+print(result.order_id)       # order id
+print(result.platform)       # logistics platform
+print(result.status)         # package status
+print(result.time)           # update time
+print(result.is_delivered)   # delivered flag
+print(result.raw_data)       # parsed carrier response
 ```
 
-## Roadmap
+Invalid local input, such as blank values or values with unsupported characters, returns `None` before any carrier request is made. Carrier-side "not found" responses are also converted to `None`.
 
-- [x] 7-11
-- [x] FamilyMart
-- [ ] Hi-Life
-- [x] OK Mart
-- [x] Shopee
-- [ ] Chunghwa Post
-- [x] Upload to PyPI
-- [x] asyncio crawler
+## Testing
+
+Unit tests are designed to run without network access:
+
+```bash
+pytest
+```
+
+Live integration tests call real carrier services and require tracking IDs in `.env`:
+
+```env
+SEVEN_ELEVEN_ORDER_ID=
+OKMART_ORDER_ID=
+FAMILY_MART_ORDER_ID=
+SHOPEE_ORDER_ID=
+HILIFE_ORDER_ID=
+EZSHIP_ORDER_ID=
+```
+
+Run them explicitly with:
+
+```bash
+pytest -m live --run-live
+```
+
+## Release Notes
+
+Build artifacts are ignored through `.gitignore`. Before creating a new release, clean stale files under `dist/` and rebuild from the current source so old wheels or source archives are not uploaded by mistake.
 
 ## License
 

@@ -1,7 +1,19 @@
-import httpx
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
+
+ORDER_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{1,63}$")
+
+
+def normalize_order_id(order_id: str) -> str | None:
+    if not isinstance(order_id, str):
+        return None
+
+    value = order_id.strip()
+    if not value or not ORDER_ID_PATTERN.fullmatch(value):
+        return None
+    return value
 
 
 class ParcelTrackingError(Exception):
@@ -30,6 +42,9 @@ class TrackingInfo:
 
 
 class Tracker(ABC):
+    def normalize_order_id(self, order_id: str) -> str | None:
+        return normalize_order_id(order_id)
+
     @abstractmethod
     def track_status(self, order_id: str) -> TrackingInfo | None:
         """

@@ -13,3 +13,4 @@ class Platform(Enum):
     Ktj = "ktj"
     Pst = "pst"
     EzShip = "ezship"
+    BianLiDai = "bian_li_dai"

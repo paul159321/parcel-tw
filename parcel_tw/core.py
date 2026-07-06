@@ -10,6 +10,7 @@ from .ecan import EcanTracker
 from .ktj import KtjTracker
 from .pst import PstTracker
 from .ezship import EzShipTracker, HiLifeTracker
+from .bian_li_dai import BianLiDaiTracker
 
 
 class TrackerFactory:
@@ -57,6 +58,8 @@ class TrackerFactory:
                 return PstTracker()
             case Platform.EzShip:
                 return EzShipTracker()
+            case Platform.BianLiDai:
+                return BianLiDaiTracker()
             case _:
                 raise ValueError(f"Invalid platform: {platform}")
 

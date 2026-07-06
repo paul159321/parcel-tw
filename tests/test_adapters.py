@@ -9,6 +9,7 @@ from parcel_tw.pst import PstTrackingInfoAdapter
 from parcel_tw.seven_eleven import SevenElevenResponseParser, SevenElevenTrackingInfoAdapter
 from parcel_tw.shopee import ShopeeTrackingInfoAdapter
 from parcel_tw.tcat import TcatTrackingInfoAdapter
+from parcel_tw.bian_li_dai import BianLiDaiTrackingInfoAdapter
 
 
 def test_seven_eleven_parser_and_adapter_convert_tracking_info():
@@ -307,3 +308,46 @@ def test_ezship_adapter_returns_none_for_not_found_page():
     """
 
     assert EzShipTrackingInfoAdapter.convert({"html": html, "order_id": "EZ123456789"}) is None
+
+
+def test_bian_li_dai_adapter_converts_action_payload():
+    raw = {
+        "barcode12": "BLD1234567",
+        "history": [
+            {
+                "source": "maple",
+                "record_at": "2026-07-06T09:00:00",
+                "state": "集貨完成",
+            },
+            {
+                "source": "maple",
+                "record_at": "2026-07-06T17:30:00",
+                "state": "配送完成",
+            },
+        ],
+    }
+
+    info = BianLiDaiTrackingInfoAdapter.convert(raw, "BLD1234567")
+
+    assert info is not None
+    assert info.order_id == "BLD1234567"
+    assert info.platform == Platform.BianLiDai.value
+    assert info.status == "配送完成"
+    assert info.time == "2026/07/06 17:30:00"
+    assert info.is_delivered is True
+
+
+def test_bian_li_dai_adapter_converts_rsc_action_response():
+    rsc = (
+        '0:{"a":"$@1","f":"","q":"","i":false}\n'
+        '1:{"barcode12":"BLD1234567","history":[{"source":"maple","record_at":"2026-07-06 17:30:00","state":"配送完成"}]}\n'
+    )
+
+    info = BianLiDaiTrackingInfoAdapter.convert({"rsc": rsc}, "BLD1234567")
+
+    assert info is not None
+    assert info.order_id == "BLD1234567"
+    assert info.platform == Platform.BianLiDai.value
+    assert info.status == "配送完成"
+    assert info.time == "2026/07/06 17:30:00"
+    assert info.is_delivered is True

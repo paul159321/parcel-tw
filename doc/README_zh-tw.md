@@ -29,6 +29,7 @@
 | `Platform.Ktj` | 嘉里大榮 |
 | `Platform.Pst` | 中華郵政 |
 | `Platform.EzShip` | ezShip 台灣便利配 |
+| `Platform.BianLiDai` | 台灣便利帶 |
 
 ## 安裝
 
@@ -126,6 +127,7 @@ FAMILY_MART_ORDER_ID=
 SHOPEE_ORDER_ID=
 HILIFE_ORDER_ID=
 EZSHIP_ORDER_ID=
+BIAN_LI_DAI_ORDER_ID=
 ```
 
 明確執行 live 測試：

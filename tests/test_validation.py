@@ -21,3 +21,9 @@ def test_seven_eleven_keeps_platform_specific_length_validation():
 def test_ezship_backed_platforms_reject_values_over_form_limit(platform):
     assert track("123456789012", platform) is None
     assert asyncio.run(track_async("123456789012", platform)) is None
+
+
+def test_bian_li_dai_requires_10_to_12_character_barcode():
+    assert track("123456789", Platform.BianLiDai) is None
+    assert track("1234567890123", Platform.BianLiDai) is None
+    assert asyncio.run(track_async("123456789", Platform.BianLiDai)) is None

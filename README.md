@@ -29,6 +29,7 @@
 | `Platform.Ktj` | KTJ Express |
 | `Platform.Pst` | Chunghwa Post |
 | `Platform.EzShip` | ezShip |
+| `Platform.BianLiDai` | Taiwan Bian Li Dai / Maple Logistics Express |
 
 ## Installation
 
@@ -126,6 +127,7 @@ FAMILY_MART_ORDER_ID=
 SHOPEE_ORDER_ID=
 HILIFE_ORDER_ID=
 EZSHIP_ORDER_ID=
+BIAN_LI_DAI_ORDER_ID=
 ```
 
 Run them explicitly with:
